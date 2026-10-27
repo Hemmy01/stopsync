@@ -68,7 +68,10 @@ export interface MethodShare {
 /** How passengers chose their stop, for tokens created today. */
 export function methodBreakdown(tokens: readonly Token[], dayStartISO: string): { total: number; shares: MethodShare[] } {
   const dayStart = new Date(dayStartISO).getTime();
-  const today = tokens.filter((t) => new Date(t.created_at).getTime() >= dayStart);
+  // Only real choices: simulator tickets are stored as "rfid" and left out.
+  const today = tokens.filter(
+    (t) => new Date(t.created_at).getTime() >= dayStart && (METHODS as readonly string[]).includes(t.method),
+  );
   const total = today.length;
   const shares = METHODS.map((method) => {
     const count = today.filter((t) => t.method === method).length;
