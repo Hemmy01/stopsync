@@ -62,6 +62,19 @@ export function acceptsBoardSelect(state: KioskState): boolean {
   return state.step === "listening";
 }
 
+/** Method chip text, e.g. "Heard by voice · 91%" or "Gesture · 88%". */
+export function selectionLabel({ method, confidence }: Selection): string {
+  const pct = confidence === null ? "" : ` · ${Math.round(confidence * 100)}%`;
+  switch (method) {
+    case "voice":
+      return `Heard by voice${pct}`;
+    case "gesture":
+      return `Gesture${pct}`;
+    case "manual":
+      return "Tapped on screen";
+  }
+}
+
 export function kioskReducer(state: KioskState, event: KioskEvent): KioskState {
   switch (event.type) {
     case "CARD_TAPPED":

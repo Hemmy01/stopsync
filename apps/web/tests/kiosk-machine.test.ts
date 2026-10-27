@@ -3,6 +3,7 @@ import {
   acceptsBoardSelect,
   initialKioskState,
   kioskReducer,
+  selectionLabel,
   timeoutSendsCancel,
   type KioskEvent,
   type KioskState,
@@ -138,6 +139,12 @@ describe("helpers", () => {
     expect(acceptsBoardSelect(listening())).toBe(true);
     expect(acceptsBoardSelect(initialKioskState)).toBe(false);
     expect(acceptsBoardSelect(confirming())).toBe(false);
+  });
+
+  it("labels the selection method", () => {
+    expect(selectionLabel(voiceKim)).toBe("Heard by voice · 91%");
+    expect(selectionLabel({ code: "KIM", method: "gesture", confidence: 0.875 })).toBe("Gesture · 88%");
+    expect(selectionLabel({ code: "KIM", method: "manual", confidence: null })).toBe("Tapped on screen");
   });
 
   it("sends CANCEL to the board only when it may still be listening", () => {
