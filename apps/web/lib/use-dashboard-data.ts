@@ -2,6 +2,8 @@
 
 import type { BusEvent, ConfigRow, Decision, Token } from "./dashboard";
 import type { Tables } from "./database.types";
+
+export type ModelInsight = Tables<"model_insights_today">;
 import type { Bus } from "./departures";
 import type { StopSyncClient } from "./supabase";
 import { kigaliDayStartISO } from "./time";
@@ -16,13 +18,22 @@ export interface DashboardData {
   decisions: Decision[];
   events: BusEvent[];
   config: ConfigRow[];
+  /** Per method, today: selections, confirmation rate, avg confidence. */
+  insights: ModelInsight[];
 }
 
-const TABLES: readonly RealtimeTable[] = ["queue_tokens", "buses", "dispatch_decisions", "bus_events", "config"];
+const TABLES: readonly RealtimeTable[] = [
+  "queue_tokens",
+  "buses",
+  "dispatch_decisions",
+  "bus_events",
+  "config",
+  "selection_events",
+];
 
 async function loadDashboard(supabase: StopSyncClient): Promise<DashboardData> {
   const dayStart = kigaliDayStartISO();
-  const [destinations, tokens, buses, decisions, events, config] = await Promise.all([
+  const [destinations, tokens, buses, decisions, events, config, insights] = await Promise.all([
     supabase.from("destinations").select("*").order("sort_order"),
     supabase
       .from("queue_tokens")
@@ -34,6 +45,7 @@ async function loadDashboard(supabase: StopSyncClient): Promise<DashboardData> {
     supabase.from("dispatch_decisions").select("*").order("id", { ascending: false }).limit(100),
     supabase.from("bus_events").select("*").order("id", { ascending: false }).limit(50),
     supabase.from("config").select("*").order("key"),
+    supabase.from("model_insights_today").select("*"),
   ]);
   return {
     dayStart,
@@ -43,6 +55,7 @@ async function loadDashboard(supabase: StopSyncClient): Promise<DashboardData> {
     decisions: unwrap(decisions),
     events: unwrap(events),
     config: unwrap(config),
+    insights: unwrap(insights),
   };
 }
 

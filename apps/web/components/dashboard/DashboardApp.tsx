@@ -6,6 +6,7 @@ import {
   buildActivity,
   computeTotals,
   configValue,
+  insightRows,
   methodBreakdown,
   pendingByDestination,
   summarizeDestination,
@@ -16,6 +17,7 @@ import {
   dismissDecision,
   markBusArrived,
   resetBus,
+  resetDemo,
   runDispatch,
   updateConfig,
   type ActionResult,
@@ -28,6 +30,7 @@ import { ActivityFeed } from "./ActivityFeed";
 import { DashboardHeader } from "./DashboardHeader";
 import { DestinationCard, type CardActions } from "./DestinationCard";
 import { MethodBreakdown } from "./MethodBreakdown";
+import { ModelInsights } from "./ModelInsights";
 import { SettingsPanel } from "./SettingsPanel";
 
 function CardSkeleton() {
@@ -57,6 +60,7 @@ export function DashboardApp() {
     return {
       totals: computeTotals(data.tokens, data.buses, data.dayStart),
       methods: methodBreakdown(data.tokens, data.dayStart),
+      insights: insightRows(data.insights),
       pending: pendingByDestination(data.decisions),
       activity: buildActivity(
         data.tokens.filter((t) => t.created_at >= data.dayStart),
@@ -76,6 +80,8 @@ export function DashboardApp() {
         totals={derived?.totals ?? null}
         onRecompute={() => act("dispatch", () => runDispatch(getSupabase()))}
         recomputing={isPending("dispatch")}
+        onResetDemo={() => act("reset-demo", () => resetDemo(getSupabase()))}
+        resetting={isPending("reset-demo")}
       />
 
       <main className="mx-auto max-w-[1440px] space-y-6 px-4 py-6 sm:px-8">
@@ -87,6 +93,11 @@ export function DashboardApp() {
         {errors.dispatch ? (
           <Banner tone="danger" title="Recompute failed">
             {errors.dispatch}
+          </Banner>
+        ) : null}
+        {errors["reset-demo"] ? (
+          <Banner tone="danger" title="Reset failed">
+            {errors["reset-demo"]}
           </Banner>
         ) : null}
 
@@ -115,6 +126,7 @@ export function DashboardApp() {
             <ActivityFeed items={derived.activity} />
             <div className="space-y-6">
               <MethodBreakdown total={derived.methods.total} shares={derived.methods.shares} />
+              <ModelInsights rows={derived.insights} />
               <SettingsPanel
                 rows={data.config}
                 save={(key, value) => act(`config-${key}`, () => updateConfig(getSupabase(), key, value))}
