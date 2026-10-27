@@ -277,7 +277,7 @@ export type Database = {
       create_token: {
         Args: {
           p_card: string
-          p_conf: number
+          p_conf?: number
           p_dest: string
           p_method: string
           p_stop: string
