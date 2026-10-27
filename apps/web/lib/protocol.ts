@@ -12,7 +12,9 @@ export type BoardMethod = "voice" | "gesture";
 export type BoardMessage =
   | { type: "HELLO"; stopId: string }
   | { type: "STATE"; state: "LISTENING" | "IDLE" }
-  | { type: "SELECT"; code: DestinationCode; method: BoardMethod; confidence: number };
+  | { type: "SELECT"; code: DestinationCode; method: BoardMethod; confidence: number }
+  /** Diagnostics only: shown in the debug drawer, never acted on. */
+  | { type: "LOG"; text: string };
 
 export type KioskCommand = { type: "START" } | { type: "ACK"; code: string } | { type: "CANCEL" };
 
@@ -26,6 +28,11 @@ const fail = (reason: string): ParseResult => ({ ok: false, reason });
 export function parseBoardLine(raw: string): ParseResult {
   const line = raw.trim();
   if (line === "") return fail("Empty line");
+
+  // LOG text is free-form and may itself contain commas.
+  if (line === "LOG" || line.startsWith("LOG,")) {
+    return { ok: true, message: { type: "LOG", text: line.slice(4).trim() } };
+  }
 
   const [type, ...args] = line.split(",").map((part) => part.trim());
 
