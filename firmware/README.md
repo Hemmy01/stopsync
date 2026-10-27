@@ -173,3 +173,94 @@ edge-impulse-data-forwarder --frequency 20
 
 Name the axes `prox,clear`. Record 3 s samples labelled `one_tap`, `two_taps`, `three_taps`,
 `hold`, `passing` (hand sweeping past) and `idle` (nothing). Re-upload `kiosk_node` afterwards.
+
+## When the models arrive
+
+Target: from zip to working kiosk in a few minutes. Do this with the kiosk tab closed.
+
+### 1. Put the zips in place
+
+Name the Edge Impulse projects (or rename the libraries) so the exports are:
+
+| Model | Zip in `ml/exports/` | Library / header |
+|---|---|---|
+| Voice | `stopsync_voice_inferencing.zip` | `stopsync_voice_inferencing.h` |
+| Gestures | `stopsync_gestures_inferencing.zip` | `stopsync_gestures_inferencing.h` |
+
+If a project has another name, keep it and change `VOICE_MODEL_HEADER` / `GESTURE_MODEL_HEADER`
+in `config.h` instead (the header is `src/<name>_inferencing.h` inside the zip):
+
+```zsh
+unzip -l ml/exports/<zip> | grep -m1 '_inferencing.h'
+```
+
+### 2. Check the labels before installing
+
+```zsh
+unzip -p ml/exports/stopsync_voice_inferencing.zip '*/model-parameters/model_variables.h' | grep categories
+unzip -p ml/exports/stopsync_gestures_inferencing.zip '*/model-parameters/model_variables.h' | grep categories
+```
+
+Expect exactly (any order): voice `remera, nyabugogo, kimironko, downtown, noise, unknown`;
+gestures `one_tap, two_taps, three_taps, hold, passing, idle`. A misspelt label never selects.
+For gestures also check the window is 3000 ms at 20 Hz with 2 axes (`EI_CLASSIFIER_RAW_SAMPLE_COUNT 60`,
+`EI_CLASSIFIER_RAW_SAMPLES_PER_FRAME 2`) or the board logs `gesture=model input size != 60 frames x 2`.
+
+### 3. Install
+
+```zsh
+arduino-cli config set library.enable_unsafe_install true     # once
+arduino-cli lib install --zip-path ml/exports/stopsync_voice_inferencing.zip
+arduino-cli lib install --zip-path ml/exports/stopsync_gestures_inferencing.zip
+arduino-cli lib list | grep inferencing
+```
+
+Re-exported a model? Install the new zip the same way; it replaces the old version.
+
+### 4. Flip the switches (`config.h`)
+
+| Have | Set |
+|---|---|
+| Voice only | `VOICE_MODE VOICE_MODEL`, `GESTURE_MODE GESTURE_RULE` (option 2) |
+| Gestures only | `VOICE_MODE VOICE_OFF`, `GESTURE_MODE GESTURE_MODEL` |
+| Both | option 1 (merged library) or option 3 (two builds) above |
+
+### 5. Compile, upload, confirm
+
+```zsh
+firmware/scripts/compile-all.sh          # model configs stop being SKIP once installed
+arduino-cli compile --fqbn arduino:mbed_nano:nano33ble firmware/kiosk_node
+arduino-cli upload  --fqbn arduino:mbed_nano:nano33ble -p /dev/cu.usbmodem1101 firmware/kiosk_node
+arduino-cli monitor -p /dev/cu.usbmodem1101 -c baudrate=115200
+```
+
+The first lines must read `HELLO,STOP-01` and `LOG,voice=VOICE_MODEL,gesture=...` with no error `LOG`.
+Type `START` and say a stop: expect `SELECT,REM,voice,0.9x` then `STATE,IDLE`. Close the monitor.
+
+### 6. Test each stop 10 times on the board
+
+Open the kiosk, **Connect board**, press **D** for the drawer. For each stop and each input:
+tap a demo card, say the name (or do the gesture) once, note the result, press **Change** to retry.
+
+| Stop | Say | Gesture | Voice hits /10 | Gesture hits /10 |
+|---|---|---|---|---|
+| REM | "Remera" | Tap once | | |
+| DTN | "Downtown" | Tap twice | | |
+| NYA | "Nyabugogo" | Tap 3 times | | |
+| KIM | "Kimironko" | Hold your hand still | | |
+
+Also try 10 × background talking and 10 × a hand passing: nothing should select.
+Record the results in `ml/results/voice.md` and `ml/results/gestures.md`, then update
+`apps/web/content/models.json` (status `on_board`, test accuracy, date) so the dashboard and `/about` show them.
+
+### 7. Tune the thresholds
+
+| Symptom | Change |
+|---|---|
+| Right stop, but slow / needs repeating | lower `VOICE_THRESHOLD` / `GESTURE_THRESHOLD` (e.g. 0.80 → 0.70) or the `*_CONSECUTIVE` count to 1 |
+| Wrong stop or false selects from noise | raise the threshold (0.85–0.90) or keep `*_CONSECUTIVE` at 2–3 |
+| One stop always weak | collect more samples for that label and retrain; check the confusion matrix |
+
+The confidence in every `SELECT` is shown on the kiosk confirm screen and stored in
+`selection_events`; the dashboard's Model insights shows average confidence and how often
+passengers press Change per method.
