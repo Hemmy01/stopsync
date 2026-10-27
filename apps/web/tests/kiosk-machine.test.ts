@@ -5,6 +5,7 @@ import {
   kioskReducer,
   selectionLabel,
   timeoutSendsCancel,
+  transitionEffects,
   type KioskEvent,
   type KioskState,
   type Selection,
@@ -152,5 +153,69 @@ describe("helpers", () => {
     expect(timeoutSendsCancel("confirm")).toBe(true);
     expect(timeoutSendsCancel("ticket")).toBe(false);
     expect(timeoutSendsCancel("duplicate")).toBe(false);
+  });
+});
+
+describe("transitionEffects", () => {
+  const voice: Selection = { code: "DTN", method: "voice", confidence: 0.9 };
+  const confirmState: KioskState = { step: "confirm", cardId: "CARD-01", selection: voice };
+  const submitting: KioskState = { step: "submitting", cardId: "CARD-01", selection: voice };
+
+  const run = (prev: KioskState, event: KioskEvent) =>
+    transitionEffects(prev, event, kioskReducer(prev, event));
+
+  it("sends START when the card is clear", () => {
+    expect(run({ step: "checking", cardId: "CARD-01" }, { type: "CARD_CLEAR" })).toEqual({
+      commands: [{ type: "START" }],
+    });
+  });
+
+  it("sends CANCEL when the card is already queued", () => {
+    expect(
+      run({ step: "checking", cardId: "CARD-01" }, { type: "CARD_ALREADY_QUEUED", code: "R4-001", destination: "DTN" })
+        .commands,
+    ).toEqual([{ type: "CANCEL" }]);
+  });
+
+  it("Change sends START again and logs 'changed'", () => {
+    expect(run(confirmState, { type: "CHANGE" })).toEqual({
+      commands: [{ type: "START" }],
+      outcome: { selection: voice, outcome: "changed", tokenCode: null },
+    });
+  });
+
+  it("a created token sends ACK and logs 'confirmed' with the code", () => {
+    const ticket = { code: "R4-002", destination: "DTN", position: 2 };
+    expect(run(submitting, { type: "TOKEN_CREATED", ticket })).toEqual({
+      commands: [{ type: "ACK", code: "R4-002" }],
+      outcome: { selection: voice, outcome: "confirmed", tokenCode: "R4-002" },
+    });
+  });
+
+  it("a duplicate on submit sends CANCEL", () => {
+    expect(run(submitting, { type: "TOKEN_DUPLICATE", code: "R4-001", destination: "DTN" }).commands).toEqual([
+      { type: "CANCEL" },
+    ]);
+  });
+
+  it("timeout and cancel on confirm send CANCEL and log the outcome", () => {
+    expect(run(confirmState, { type: "TIMEOUT" })).toEqual({
+      commands: [{ type: "CANCEL" }],
+      outcome: { selection: voice, outcome: "timeout", tokenCode: null },
+    });
+    expect(run(confirmState, { type: "CANCEL" }).outcome?.outcome).toBe("cancelled");
+  });
+
+  it("listening timeout sends CANCEL with nothing to log", () => {
+    expect(run({ step: "listening", cardId: "CARD-01" }, { type: "TIMEOUT" })).toEqual({
+      commands: [{ type: "CANCEL" }],
+    });
+  });
+
+  it("ticket timeout and ignored events do nothing", () => {
+    const ticket: KioskState = { step: "ticket", cardId: "CARD-01", ticket: { code: "R4-002", destination: "DTN", position: 1 } };
+    expect(run(ticket, { type: "TIMEOUT" })).toEqual({ commands: [] });
+    expect(run({ step: "idle" }, { type: "CHANGE" })).toEqual({ commands: [] });
+    expect(run(confirmState, { type: "CARD_CLEAR" })).toEqual({ commands: [] });
   });
 });

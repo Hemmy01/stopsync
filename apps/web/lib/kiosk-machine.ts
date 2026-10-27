@@ -2,6 +2,7 @@
 // (board commands, RPC calls, timers) live in use-kiosk.ts.
 
 import { isDestinationCode, type DestinationCode } from "./destinations";
+import type { KioskCommand } from "./protocol";
 
 export type SelectionMethod = "voice" | "gesture" | "manual";
 
@@ -121,5 +122,64 @@ export function kioskReducer(state: KioskState, event: KioskEvent): KioskState {
     case "CANCEL":
       // Never abandon an in-flight request: its result decides the next step.
       return state.step === "submitting" ? state : initialKioskState;
+  }
+}
+
+export type SelectionOutcome = "confirmed" | "changed" | "cancelled" | "timeout";
+
+export interface TransitionEffects {
+  /** Lines to send to the board, in order. */
+  commands: KioskCommand[];
+  /** A selection outcome to record with log_selection. */
+  outcome?: { selection: Selection; outcome: SelectionOutcome; tokenCode: string | null };
+}
+
+/**
+ * What a transition must do outside the reducer. Pure, so the board protocol
+ * and the selection log are unit-tested with the state machine.
+ */
+export function transitionEffects(prev: KioskState, event: KioskEvent, next: KioskState): TransitionEffects {
+  if (next === prev) return { commands: [] };
+
+  switch (event.type) {
+    case "CARD_CLEAR":
+      return { commands: [{ type: "START" }] };
+
+    case "CARD_ALREADY_QUEUED":
+      return { commands: [{ type: "CANCEL" }] };
+
+    case "CHANGE":
+      // The board stopped after its SELECT: make it listen again.
+      return prev.step === "confirm"
+        ? { commands: [{ type: "START" }], outcome: { selection: prev.selection, outcome: "changed", tokenCode: null } }
+        : { commands: [] };
+
+    case "TOKEN_CREATED":
+      return prev.step === "submitting"
+        ? {
+            commands: [{ type: "ACK", code: event.ticket.code }],
+            outcome: { selection: prev.selection, outcome: "confirmed", tokenCode: event.ticket.code },
+          }
+        : { commands: [] };
+
+    case "TOKEN_DUPLICATE":
+      // The passenger confirmed the model's choice; the card was simply already queued.
+      return prev.step === "submitting"
+        ? {
+            commands: [{ type: "CANCEL" }],
+            outcome: { selection: prev.selection, outcome: "confirmed", tokenCode: event.code },
+          }
+        : { commands: [] };
+
+    case "TIMEOUT":
+    case "CANCEL": {
+      const commands: KioskCommand[] = timeoutSendsCancel(prev.step) ? [{ type: "CANCEL" }] : [];
+      if (prev.step !== "confirm") return { commands };
+      const outcome = event.type === "TIMEOUT" ? "timeout" : "cancelled";
+      return { commands, outcome: { selection: prev.selection, outcome, tokenCode: null } };
+    }
+
+    default:
+      return { commands: [] };
   }
 }

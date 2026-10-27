@@ -120,3 +120,27 @@ export async function updateConfig(c: StopSyncClient, key: string, value: number
 }
 
 export { num as jsonNumber, str as jsonString };
+
+export interface LogSelectionArgs {
+  stopId: string;
+  destination: string;
+  method: "voice" | "gesture" | "manual";
+  confidence: number | null;
+  outcome: "confirmed" | "changed" | "cancelled" | "timeout";
+  tokenCode: string | null;
+}
+
+export const logSelection = (c: StopSyncClient, a: LogSelectionArgs) =>
+  action(
+    c.rpc("log_selection", {
+      p_stop: a.stopId,
+      p_dest: a.destination,
+      p_method: a.method,
+      // Generated types mark these non-null; the SQL accepts null for both.
+      p_conf: a.confidence ?? (null as unknown as number),
+      p_outcome: a.outcome,
+      ...(a.tokenCode !== null ? { p_token: a.tokenCode } : {}),
+    }),
+  );
+
+export const resetDemo = (c: StopSyncClient) => action(c.rpc("reset_demo"));
