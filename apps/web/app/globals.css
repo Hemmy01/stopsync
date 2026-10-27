@@ -133,3 +133,13 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* /about is printable: white page, no shadows or backgrounds that waste ink. */
+@media print {
+  body {
+    background: #fff;
+  }
+  @page {
+    margin: 16mm;
+  }
+}
