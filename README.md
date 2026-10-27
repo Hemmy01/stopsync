@@ -157,6 +157,31 @@ only a driver can move their bus).
 
 ---
 
+## Network simulator
+
+`simulator/` adds passengers at five more stops (`STOP-02`…`STOP-06`, created by migration
+`20261027210000_simulator_stops.sql`) so the dashboard shows city-wide demand. It needs Node 21+,
+has no dependencies and reads the public values from `apps/web/.env.local`.
+
+```zsh
+node simulator/simulate.mjs                          # Kigali clock decides peak or off-peak
+node simulator/simulate.mjs --profile peak           # 2 passengers / min / stop
+node simulator/simulate.mjs --speed 60               # an hour of traffic every minute
+node simulator/simulate.mjs --minutes 5 --stops STOP-02,STOP-04
+node simulator/simulate.mjs --dry-run                # print only, write nothing
+node simulator/simulate.mjs clear                    # expire the simulator's waiting tickets
+node --test simulator                                # simulator unit tests
+```
+
+Stop it with **Ctrl+C**; it prints how many tickets each stop got.
+
+- Rates: peak 06:30–09:00 and 16:30–19:30 Kigali time, 2.0 passengers/min/stop; otherwise 0.3.
+- Tickets go through `create_token`, like the kiosk, with method `rfid` (card only). They count as
+  demand on the dashboard and in dispatch, but stay out of "How passengers chose" and Model insights.
+- The kiosk's departure strip counts only its own stop (`STOP-01`); the dashboard counts every stop.
+- A bus arriving boards the oldest waiting passengers for its route across all stops.
+  **Reset demo** on the dashboard clears everything.
+
 ## Deploy to Vercel
 
 1. Import the GitHub repo in Vercel.
