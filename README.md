@@ -1,28 +1,18 @@
 # StopSync
 
 A smart bus stop prototype for Kigali: a **digital waiting list for buses**.
-Built by a 5-person team in the CMU-Africa Bridge Program.
+Built in the CMU-Africa Bridge Program.
 
 1. A passenger **taps a card** at the kiosk.
-2. They choose their stop by **voice** or a **hand gesture** (ML models on an Arduino Nano 33 BLE Sense).
+2. They choose their stop by **voice** or a **tap gesture** over the proximity sensor
+   (two Edge Impulse models on an Arduino Nano 33 BLE Sense Lite).
 3. They confirm and get a **queue number** such as `R3-014`.
 4. HQ sees live demand on a **dashboard**, gets a "release a bus" recommendation, and approves it.
 5. The kiosk shows the **bus status and ETA**, updated from the driver's phone GPS.
 6. When the bus arrives, waiting passengers are marked **boarded**.
 
 **Sense** (who is waiting) → **Decide** (when to send a bus) → **Inform** (number and ETA).
-
-```
-Arduino board ──USB serial──▶ Kiosk page (Chrome, Web Serial)
-                                   │
-                                   ▼
-                              Supabase (Postgres + Realtime + Cron)
-                                   ▲                ▲
-                    HQ dashboard ──┘                └── /bus page (phone GPS)
-```
-
-The board never talks to the internet; the kiosk page is the gateway. All business rules
-(queue numbers, dispatch, boarding) live in Postgres functions, so every screen behaves the same.
+Architecture diagrams: [`docs/architecture.md`](docs/architecture.md).
 
 | Screen | Path | Used on |
 |---|---|---|
@@ -30,82 +20,109 @@ The board never talks to the internet; the kiosk page is the gateway. All busine
 | Kiosk | `/kiosk` | laptop at the stop, Chrome, board plugged in by USB |
 | HQ dashboard | `/dashboard` | desktop or tablet |
 | Bus driver | `/bus` | phone in the bus (needs HTTPS for GPS) |
+| About | `/about` | judges; printable |
 
 ---
 
 ## Repository
 
 ```
-apps/web/        Next.js app (kiosk, dashboard, bus page)
-supabase/        migrations, seed and CLI config
-docs/protocol.md Board ↔ kiosk serial protocol (for the firmware team)
-simulator/       optional load simulator (not built yet)
-firmware/ ml/    owned by teammates
+apps/web/                 Next.js app (kiosk, dashboard, bus page, about)
+supabase/                 migrations, seed and CLI config
+firmware/kiosk_node/      Arduino sketch: protocol, LEDs, rule taps, voice + gesture model hooks
+firmware/README.md        build/upload, tuning, two-model options, "When the models arrive"
+ml/collect/tap_logger/    20 Hz prox,clear stream for Edge Impulse data collection
+ml/exports/               Edge Impulse Arduino library zips go here
+ml/results/               voice.md, gestures.md (accuracy and on-board tests)
+simulator/                extra stops at peak/off-peak rates
+docs/                     protocol, architecture, demo script, rehearsal checklist
 ```
 
-Stack: Next.js 16 (App Router) · TypeScript (strict) · Tailwind CSS 4 · Supabase · Vitest.
+Stack: Next.js 16 · TypeScript (strict) · Tailwind CSS 4 · Supabase (Postgres, Realtime, pg_cron) ·
+Vitest · arduino-cli · Edge Impulse.
 
 ---
 
-## Run it locally
+## Run the web app (5 minutes)
 
-You need **Node.js 20.9 or newer** and **Chrome or Edge** (Web Serial only works there).
+You need **Node.js 20.9+** (21+ for the simulator) and **Chrome or Edge** (Web Serial only works there).
 
-### 1. Clone and install
-
-```bash
+```zsh
 git clone https://github.com/Hemmy01/stopsync.git
 cd stopsync/apps/web
 npm install
+cp ../.env.example .env.local     # fill the NEXT_PUBLIC_* lines; leave the SUPABASE_* (CLI) lines empty
+npm run dev                        # http://localhost:3000
 ```
 
-### 2. Add environment values
+`apps/web/.env.local` (ask Danny for the URL and anon key):
 
-Ask Danny for the project URL and anon key, then create `apps/web/.env.local`:
-
-```bash
+```zsh
 NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon or publishable key>
 NEXT_PUBLIC_STOP_ID=STOP-01
 ```
 
-Use the **anon / publishable** key only. Never put the `service_role` or secret key in the web app.
-`.env*` files are git-ignored; only `.env.example` is committed.
+Use the **anon / publishable** key only; never the `service_role` or secret key. `.env*` files are
+git-ignored; only `.env.example` is committed. The shared Supabase project is already set up.
 
-### 3. Start
+**Without the board:** open <http://localhost:3000/kiosk?mock=1> or press **D** on the kiosk. The
+debug drawer emits every board message (`HELLO`, `STATE`, `LOG`, `SELECT` for each stop) through the
+same parser as real serial, and shows the raw serial log.
 
-```bash
-npm run dev
-```
-
-Open <http://localhost:3000>. The database is already set up on the shared Supabase project,
-so that's all a teammate needs.
-
-### Try it without the board
-
-Open <http://localhost:3000/kiosk?mock=1>, or press **D** on the kiosk. The debug drawer emits every
-board message (`HELLO`, `STATE`, `SELECT` for each stop) through the same parser as real serial,
-and shows the raw serial log.
-
-### Connect the board
-
-1. Flash a sketch that speaks the protocol in [`docs/protocol.md`](docs/protocol.md) (115200 baud).
-2. Close the Arduino Serial Monitor (only one program can open the port).
-3. On `/kiosk`, click **Connect board** and choose the Arduino. **Any port** lists every serial device.
-4. After the first time, the kiosk reconnects by itself on reload and when the board is plugged back in.
+| Command (in `apps/web`) | What it does |
+|---|---|
+| `npm run dev` | Development server on port 3000 |
+| `npm run lint` · `npm run typecheck` | ESLint · route types + `tsc --noEmit` |
+| `npm test` | Vitest: protocol, kiosk reducer, ETA, dashboard, serial, GPS, models.json, config.h consistency |
+| `npm run build` | Production build |
+| `npm run check` | All of the above in order (run before every commit) |
 
 ---
 
-## Commands (in `apps/web`)
+## Firmware: build and upload the board
 
-| Command | What it does |
-|---|---|
-| `npm run dev` | Development server on port 3000 |
-| `npm run lint` | ESLint |
-| `npm run typecheck` | Route types + `tsc --noEmit` |
-| `npm test` | Vitest unit tests (protocol, kiosk reducer, ETA, dashboard, serial, GPS) |
-| `npm run build` | Production build |
-| `npm run check` | All of the above, in order (run before every commit) |
+Full guide: [`firmware/README.md`](firmware/README.md). Protocol: [`docs/protocol.md`](docs/protocol.md).
+
+```zsh
+# once
+arduino-cli core install arduino:mbed_nano
+arduino-cli lib install Arduino_APDS9960
+arduino-cli config set library.enable_unsafe_install true
+
+# every time (from the repo root)
+arduino-cli board list                                   # e.g. /dev/cu.usbmodem1101
+arduino-cli compile --fqbn arduino:mbed_nano:nano33ble firmware/kiosk_node
+arduino-cli upload  --fqbn arduino:mbed_nano:nano33ble -p /dev/cu.usbmodem1101 firmware/kiosk_node
+firmware/scripts/compile-all.sh                          # every config that doesn't need model zips
+```
+
+The default build is `VOICE_OFF` + `GESTURE_RULE`: taps work today without any model.
+Then on `/kiosk`: **Connect board** → choose the Arduino (**Any port** lists every serial device).
+Close any Serial Monitor first: only one program can open the port. After the first time the kiosk
+reconnects by itself on reload and when the board is plugged back in.
+
+| Stop | Say | Over the sensor | Board LED after SELECT |
+|---|---|---|---|
+| Remera (R2) | "Remera" | Tap once | green |
+| Downtown (R4) | "Downtown" | Tap twice | purple |
+| Nyabugogo (R1) | "Nyabugogo" | Tap 3 times | blue |
+| Kimironko (R3) | "Kimironko" | Hold your hand still | yellow |
+
+The mapping lives in `supabase/seed.sql`, `apps/web/lib/destinations.ts` and
+`firmware/kiosk_node/config.h`; `tests/firmware-config.test.ts` fails if config.h drifts.
+
+### Dropping in the Edge Impulse models
+
+1. Export each project as an **Arduino library** into `ml/exports/`
+   (`stopsync_voice_inferencing.zip`, `stopsync_gestures_inferencing.zip`).
+2. `arduino-cli lib install --zip-path ml/exports/<zip>`
+3. In `config.h` set `VOICE_MODE VOICE_MODEL` (and/or `GESTURE_MODE GESTURE_MODEL`; both at once needs
+   the multi-impulse option).
+4. Compile, upload, test each stop 10 times, record results in `ml/results/`, update
+   `apps/web/content/models.json`.
+
+Exact commands, label checks and threshold tuning: "When the models arrive" in `firmware/README.md`.
 
 ---
 
@@ -113,28 +130,29 @@ and shows the raw serial log.
 
 Everything in the database comes from `supabase/migrations/` and `supabase/seed.sql`.
 
-| Table | Holds |
+| Table / view | Holds |
 |---|---|
-| `stops` | The kiosk location (`STOP-01`) |
-| `destinations` | The four stops: NYA Nyabugogo (R1), REM Remera (R2), KIM Kimironko (R3), DTN Downtown (R4) |
+| `stops` | The kiosk (`STOP-01`) and simulator stops `STOP-02`…`STOP-06` |
+| `destinations` | NYA Nyabugogo R1 · REM Remera R2 · KIM Kimironko R3 · DTN Downtown R4, with voice/gesture labels |
 | `queue_tokens` | Queue numbers and their status (`waiting` / `boarded` / `expired`) |
-| `buses` | 2 buses per route, status, GPS, ETA |
-| `bus_events` | Released / arrived / reset history |
+| `buses` · `bus_events` | 2 buses per route (status, GPS, ETA) · released / arrived / reset history |
 | `dispatch_decisions` | Release / hold recommendations and HQ decisions |
-| `config` | Tunable dispatch rules (editable on the dashboard) |
+| `selection_events` | Every board/screen choice and its outcome (confirmed / changed / cancelled / timeout) |
+| `config` | Dispatch rules, editable on the dashboard |
+| `model_insights_today` (view) | Per method today: selections, confirmation rate, average confidence |
 
 Functions: `create_token`, `run_dispatch` (every minute via **pg_cron**), `approve_decision`,
-`dismiss_decision`, `update_bus_location`, `mark_bus_arrived`, `reset_bus`.
+`dismiss_decision`, `update_bus_location`, `mark_bus_arrived`, `reset_bus`, `log_selection`, `reset_demo`.
 
 ### Changing the schema (Danny)
 
 Put the CLI values in a git-ignored `.env.local` at the repo root
 (`SUPABASE_PROJECT_REF`, `SUPABASE_DB_PASSWORD`, `SUPABASE_ACCESS_TOKEN`; see `.env.example`), then:
 
-```bash
+```zsh
 set -a && . ./.env.local && set +a
 npx supabase link --project-ref "$SUPABASE_PROJECT_REF" -p "$SUPABASE_DB_PASSWORD"
-npx supabase migration new <name>          # write SQL in the new file
+npx supabase migration new <name>          # write SQL in the new file; never edit applied ones
 npx supabase db push --linked              # apply to the project
 npx supabase gen types typescript --linked --schema public > apps/web/lib/database.types.ts
 ```
@@ -150,18 +168,17 @@ npx supabase gen types typescript --linked --schema public > apps/web/lib/databa
 ### ⚠️ Prototype security
 
 This prototype has **no authentication**. Every table has an open RLS policy
-(`using (true) with check (true)`) for `anon`, and the business functions are `security definer`
-and callable by `anon`. Anyone with the anon key can read and change data.
-**Before any real use, add authentication and per-role policies** (e.g. only HQ can approve,
+(`using (true) with check (true)`) for `anon`, and the business functions (including `reset_demo`)
+are `security definer` and callable by `anon`. Anyone with the anon key can read and change data.
+**Before any real use, add authentication and per-role policies** (e.g. only HQ can approve or reset,
 only a driver can move their bus).
 
 ---
 
 ## Network simulator
 
-`simulator/` adds passengers at five more stops (`STOP-02`…`STOP-06`, created by migration
-`20261027210000_simulator_stops.sql`) so the dashboard shows city-wide demand. It needs Node 21+,
-has no dependencies and reads the public values from `apps/web/.env.local`.
+`simulator/` adds passengers at `STOP-02`…`STOP-06` so the dashboard shows city-wide demand.
+Node 21+, no dependencies, reads the public values from `apps/web/.env.local`.
 
 ```zsh
 node simulator/simulate.mjs                          # Kigali clock decides peak or off-peak
@@ -176,47 +193,39 @@ node --test simulator                                # simulator unit tests
 Stop it with **Ctrl+C**; it prints how many tickets each stop got.
 
 - Rates: peak 06:30–09:00 and 16:30–19:30 Kigali time, 2.0 passengers/min/stop; otherwise 0.3.
-- Tickets go through `create_token`, like the kiosk, with method `rfid` (card only). They count as
-  demand on the dashboard and in dispatch, but stay out of "How passengers chose" and Model insights.
-- The kiosk's departure strip counts only its own stop (`STOP-01`); the dashboard counts every stop.
+- Tickets go through `create_token` with method `rfid` (card only): they count as demand on the
+  dashboard and in dispatch, but stay out of "How passengers chose" and Model insights.
+- The kiosk's departure strip counts only its own stop; the dashboard counts every stop.
 - A bus arriving boards the oldest waiting passengers for its route across all stops.
   **Reset demo** on the dashboard clears everything.
 
+---
+
 ## Deploy to Vercel
 
-1. Import the GitHub repo in Vercel.
-2. Set **Root Directory** to `apps/web` (framework preset: Next.js).
-3. Add the three `NEXT_PUBLIC_*` variables from `apps/web/.env.local`.
-4. Deploy. The phone needs this **https://** address for GPS on `/bus`.
+1. <https://vercel.com/new> → **Import** `Hemmy01/stopsync`.
+2. **Root Directory:** `apps/web` (framework preset Next.js, other settings default).
+3. **Environment Variables:** the three `NEXT_PUBLIC_*` values from `apps/web/.env.local`
+   (Production and Preview).
+4. **Deploy.** Every push to a branch gets a Preview URL; `main` is Production.
+
+The `https://` address is required for Web Serial on the kiosk and GPS on the phone's `/bus` page.
 
 ---
 
-## Demo script (about 5 minutes)
+## Demo and rehearsal
 
-Setup: laptop with Chrome on `/kiosk` (board plugged in, or `?mock=1`), a second screen on
-`/dashboard`, a phone on the deployed `/bus` URL.
-
-1. **Kiosk:** click **Hold your card here** → *Demo card 1*. The board starts listening.
-2. **Say "Kimironko"** (or show the gesture). The kiosk asks *Kimironko?* with "Heard by voice · 91%".
-3. **Confirm.** The boarding-pass ticket shows `R3-001`, position in queue and *Waiting for dispatch*.
-4. Tap *Demo card 1* again: *You're already in the queue*.
-5. Add a few more tickets with other cards; watch the departure strip and dashboard counts rise live.
-6. **Dashboard:** point out waiting counts, oldest wait, load bar and *How passengers chose* (the ML models in use).
-   To trigger a release quickly, set **Release after waiting** to `0` in Settings and press **Recompute now**.
-7. **Approve** the Kimironko release. The kiosk ticket and strip change to *R3-01 · 8 min*.
-8. **Phone:** open `/bus`, pick **R3-01**, **Start sharing location**. Walk around: the ETA updates on the
-   kiosk and dashboard. Near the stop it marks itself arrived, or press **I've arrived**.
-9. Kiosk strip shows *Boarding*; the dashboard shows passengers boarded. Press **Reset bus**.
-10. Set **Release after waiting** back to `15`.
-
----
+- [`docs/demo-script.md`](docs/demo-script.md): the live demo step by step, with a fallback for every step.
+- [`docs/rehearsal-checklist.md`](docs/rehearsal-checklist.md): what to check the day before and an hour before.
 
 ## Troubleshooting
 
 | Problem | Fix |
 |---|---|
 | No **Connect board** button | Use Chrome or Edge on a laptop; Web Serial isn't available elsewhere. |
-| "Couldn't open the board" | Close the Arduino Serial Monitor or any other tab using the port. |
+| "Couldn't open the board" | Close the Arduino Serial Monitor, `arduino-cli monitor` or any other tab using the port. |
+| Upload can't find the board | Double-tap the board's reset button (orange LED pulses) and upload again. |
+| Taps not recognised / counted twice | Watch `LOG,gesture=…` lines in the kiosk drawer (**D**) and tune `PROX_*` in `config.h`. |
 | `/bus` says location only works over HTTPS | Open the deployed `https://` URL on the phone (plain `http://192.168…` won't work). |
 | "Supabase is not configured" banner | Create `apps/web/.env.local` with the three values and restart `npm run dev`. |
 | Recommendations never change | pg_cron runs `run_dispatch()` every minute; use **Recompute now** to run it immediately. |
