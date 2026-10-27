@@ -1,0 +1,14 @@
+{
+  "voice": {
+    "status": "pending",
+    "testAccuracy": null,
+    "labels": ["remera", "nyabugogo", "kimironko", "downtown", "noise", "unknown"],
+    "updated": null
+  },
+  "gesture": {
+    "status": "rule",
+    "testAccuracy": null,
+    "labels": ["one_tap", "two_taps", "three_taps", "hold", "passing", "idle"],
+    "updated": null
+  }
+}
