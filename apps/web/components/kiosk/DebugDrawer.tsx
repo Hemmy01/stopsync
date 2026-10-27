@@ -77,6 +77,9 @@ export function DebugDrawer({ mock, log, onClose }: DebugDrawerProps) {
             <EmitButton line={`HELLO,${STOP_ID}`} onEmit={emit} />
             <EmitButton line="STATE,LISTENING" onEmit={emit} />
             <EmitButton line="STATE,IDLE" onEmit={emit} />
+            <EmitButton line="LOG,voice=VOICE_OFF,gesture=GESTURE_RULE" onEmit={emit}>
+              LOG
+            </EmitButton>
           </div>
         </section>
 

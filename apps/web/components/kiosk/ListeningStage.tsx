@@ -46,10 +46,14 @@ export function ListeningStage({ onSelect, onCancel }: ListeningStageProps) {
             <button
               type="button"
               onClick={() => onSelect(d.code)}
-              className="flex h-[180px] w-full flex-col justify-between rounded-card border border-line bg-surface p-6 text-left transition-colors duration-200 ease-out hover:border-ink"
+              className="flex h-[216px] w-full flex-col justify-between rounded-card border border-line bg-surface p-6 text-left transition-colors duration-200 ease-out hover:border-ink"
             >
               <RouteBadge code={d.code} size="lg" />
-              <span className="font-display text-[32px] font-semibold leading-tight">{d.name}</span>
+              <span>
+                <span className="block font-display text-[32px] font-semibold leading-tight">{d.name}</span>
+                <span className="mt-1 block text-lg leading-snug text-muted">Say &ldquo;{d.name}&rdquo;</span>
+                <span className="block text-lg leading-snug text-muted">{d.gestureHint}</span>
+              </span>
             </button>
           </li>
         ))}
