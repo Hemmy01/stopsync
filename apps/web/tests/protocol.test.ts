@@ -44,7 +44,7 @@ describe("parseBoardLine", () => {
     ["hello,STOP-01", "lowercase type"],
     ["HELLO", "missing stop id"],
     ["STATE,SLEEPING", "unknown state"],
-    ["SELECT,KCY,voice,0.9", "unknown destination"],
+    ["SELECT,XYZ,voice,0.9", "unknown destination"],
     ["SELECT,kim,voice,0.9", "lowercase destination"],
     ["SELECT,KIM,rfid,0.9", "board cannot send rfid"],
     ["SELECT,KIM,voice", "missing confidence"],
