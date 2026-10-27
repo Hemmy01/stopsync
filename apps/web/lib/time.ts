@@ -24,3 +24,15 @@ export function formatKigaliTime(date: Date, withSeconds = false): string {
 export function minutesSince(iso: string, now: Date = new Date()): number {
   return Math.max(0, Math.floor((now.getTime() - new Date(iso).getTime()) / 60_000));
 }
+
+const ymd = new Intl.DateTimeFormat("en-CA", {
+  timeZone: KIGALI_TZ,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+/** ISO timestamp of the most recent midnight in Kigali (UTC+2, no DST). */
+export function kigaliDayStartISO(now: Date = new Date()): string {
+  return new Date(`${ymd.format(now)}T00:00:00+02:00`).toISOString();
+}
