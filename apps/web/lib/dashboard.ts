@@ -22,7 +22,7 @@ export function summarizeDestination(
   tokens: readonly Token[],
   capacity: number,
   releaseLoadPct: number,
-  now: Date,
+  now: Date | null,
 ): DestinationSummary {
   const waiting = tokens.filter((t) => t.destination === code && t.status === "waiting");
   const oldest = waiting.reduce<string | null>(
@@ -32,7 +32,7 @@ export function summarizeDestination(
   const loadPct = capacity > 0 ? Math.round((waiting.length / capacity) * 100) : 0;
   return {
     waiting: waiting.length,
-    oldestWaitMin: oldest === null ? null : minutesSince(oldest, now),
+    oldestWaitMin: oldest === null || now === null ? null : minutesSince(oldest, now),
     loadPct,
     highLoad: waiting.length > 0 && loadPct >= releaseLoadPct,
   };
