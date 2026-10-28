@@ -3,12 +3,14 @@
 import { Loader2, Nfc, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { RouteBadge } from "@/components/RouteBadge";
-import { DEMO_CARDS } from "@/lib/demo-cards";
+import { DEMO_CARDS, newTestCardId } from "@/lib/demo-cards";
 import { DESTINATIONS } from "@/lib/destinations";
 
 interface IdleStageProps {
   /** True while the tapped card is being checked. */
   reading: boolean;
+  /** Offer a card that is new on every tap (debug drawer open), for repeated tests. */
+  testCard: boolean;
   onTap: (cardId: string) => void;
 }
 
@@ -47,7 +49,7 @@ function HowToChoose() {
 }
 
 /** Step 1: "Tap your card to begin", with a simulated card reader. */
-export function IdleStage({ reading, onTap }: IdleStageProps) {
+export function IdleStage({ reading, testCard, onTap }: IdleStageProps) {
   const [picking, setPicking] = useState(false);
 
   useEffect(() => {
@@ -99,6 +101,21 @@ export function IdleStage({ reading, onTap }: IdleStageProps) {
                   </button>
                 </li>
               ))}
+              {testCard ? (
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPicking(false);
+                      onTap(newTestCardId());
+                    }}
+                    className="flex h-16 w-full items-center justify-between rounded-card border border-dashed border-ink px-5 text-left font-semibold transition-colors duration-200 ease-out hover:bg-paper"
+                  >
+                    <span>Test card</span>
+                    <span className="text-base font-normal text-muted">New passenger every tap</span>
+                  </button>
+                </li>
+              ) : null}
             </ul>
           </div>
         ) : (
