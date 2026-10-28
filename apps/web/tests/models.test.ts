@@ -4,7 +4,7 @@ import {
   NON_SELECTING_GESTURE_LABELS,
   NON_SELECTING_VOICE_LABELS,
 } from "@/lib/destinations";
-import { formatAccuracy, MODEL_STATUS_LABEL, MODELS } from "@/lib/models";
+import { formatAccuracy, headlineAccuracy, MODEL_STATUS_LABEL, MODELS, type ModelInfo } from "@/lib/models";
 
 const sorted = (xs: readonly string[]) => [...xs].sort();
 
@@ -24,11 +24,19 @@ describe("content/models.json", () => {
   it("has a known status and a valid accuracy", () => {
     for (const model of Object.values(MODELS)) {
       expect(Object.keys(MODEL_STATUS_LABEL)).toContain(model.status);
-      if (model.testAccuracy !== null) {
-        expect(model.testAccuracy).toBeGreaterThanOrEqual(0);
-        expect(model.testAccuracy).toBeLessThanOrEqual(1);
+      for (const value of [model.testAccuracy, model.validationAccuracy]) {
+        if (value === null) continue;
+        expect(value).toBeGreaterThanOrEqual(0);
+        expect(value).toBeLessThanOrEqual(1);
       }
     }
+  });
+
+  it("shows test accuracy first, else validation, labelled as such", () => {
+    const base: ModelInfo = { status: "trained", testAccuracy: null, validationAccuracy: null, labels: [], updated: null };
+    expect(headlineAccuracy(base)).toEqual({ kind: "test", value: null });
+    expect(headlineAccuracy({ ...base, validationAccuracy: 0.91 })).toEqual({ kind: "validation", value: 0.91 });
+    expect(headlineAccuracy({ ...base, testAccuracy: 0.88, validationAccuracy: 0.91 })).toEqual({ kind: "test", value: 0.88 });
   });
 
   it("formats accuracy", () => {

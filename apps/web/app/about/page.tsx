@@ -5,7 +5,7 @@ import { PrintButton } from "@/components/about/PrintButton";
 import { RouteBadge } from "@/components/RouteBadge";
 import { Wordmark } from "@/components/Wordmark";
 import { DESTINATIONS, NON_SELECTING_GESTURE_LABELS, NON_SELECTING_VOICE_LABELS } from "@/lib/destinations";
-import { formatAccuracy, MODEL_STATUS_LABEL, MODELS, type ModelKey } from "@/lib/models";
+import { formatAccuracy, headlineAccuracy, MODEL_STATUS_LABEL, MODELS, type ModelKey } from "@/lib/models";
 
 export const metadata: Metadata = {
   title: "About · Tap&Select",
@@ -60,6 +60,7 @@ const FUTURE = [
 
 function ModelCard({ model, title, sensor }: { model: ModelKey; title: string; sensor: string }) {
   const info = MODELS[model];
+  const accuracy = headlineAccuracy(info);
   const stopLabel = (label: string) =>
     DESTINATIONS.find((d) => (model === "voice" ? d.voiceLabel : d.gestureLabel) === label);
   const nonSelecting: readonly string[] = model === "voice" ? NON_SELECTING_VOICE_LABELS : NON_SELECTING_GESTURE_LABELS;
@@ -74,8 +75,8 @@ function ModelCard({ model, title, sensor }: { model: ModelKey; title: string; s
           <dd className="font-semibold">{MODEL_STATUS_LABEL[info.status]}</dd>
         </div>
         <div>
-          <dt className="text-muted">Test accuracy</dt>
-          <dd className="num font-semibold">{formatAccuracy(info.testAccuracy)}</dd>
+          <dt className="text-muted">{accuracy.kind === "test" ? "Test accuracy" : "Validation accuracy"}</dt>
+          <dd className="num font-semibold">{formatAccuracy(accuracy.value)}</dd>
         </div>
       </dl>
       <table className="mt-4 w-full text-sm">
