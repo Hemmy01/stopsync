@@ -1,4 +1,4 @@
-# StopSync architecture
+# Tap&Select architecture
 
 ## What runs where
 

@@ -1,4 +1,4 @@
-# StopSync board ↔ kiosk serial protocol
+# Tap&Select board ↔ kiosk serial protocol
 
 How the Arduino Nano 33 BLE Sense Lite (`firmware/kiosk_node/`) talks to the kiosk web page.
 The board never talks to the internet; the kiosk page (Chrome, Web Serial) is the gateway.

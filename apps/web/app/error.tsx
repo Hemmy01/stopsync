@@ -16,7 +16,7 @@ export default function Error({ error, retry }: { error: unknown; retry: () => v
       <Wordmark />
       <h1 className="mt-10 text-[40px] leading-tight">Something went wrong on this screen.</h1>
       <p className="mt-3 text-lg text-muted">
-        The rest of StopSync keeps running. Try again, or go back to the start.
+        The rest of Tap&Select keeps running. Try again, or go back to the start.
       </p>
       <div className="mt-8 flex gap-3">
         <Button variant="ink" size="lg" onClick={retry} icon={<RotateCcw aria-hidden className="h-4 w-4" />}>

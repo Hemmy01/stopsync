@@ -1,4 +1,4 @@
-# StopSync
+# Tap&Select
 
 A smart bus stop prototype for Kigali: a **digital waiting list for buses**.
 Built in the CMU-Africa Bridge Program.

@@ -75,7 +75,7 @@ export function BusApp() {
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col px-4 pb-10">
       <header className="flex h-16 items-center justify-between border-b border-line">
-        <Link href="/" aria-label="StopSync home">
+        <Link href="/" aria-label="Tap&Select home">
           <Wordmark />
         </Link>
         <KigaliClock className="text-xl font-medium" />
@@ -83,7 +83,7 @@ export function BusApp() {
 
       <main className="flex-1 pt-6">
         {error ? (
-          <Banner tone="danger" title="Can't reach StopSync" className="mb-4">
+          <Banner tone="danger" title="Can't reach Tap&Select" className="mb-4">
             {error}
           </Banner>
         ) : null}

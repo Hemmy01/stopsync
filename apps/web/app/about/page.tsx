@@ -8,8 +8,8 @@ import { DESTINATIONS, NON_SELECTING_GESTURE_LABELS, NON_SELECTING_VOICE_LABELS 
 import { formatAccuracy, MODEL_STATUS_LABEL, MODELS, type ModelKey } from "@/lib/models";
 
 export const metadata: Metadata = {
-  title: "About · StopSync",
-  description: "How StopSync works: a digital waiting list for Kigali's buses.",
+  title: "About · Tap&Select",
+  description: "How Tap&Select works: a digital waiting list for Kigali's buses.",
 };
 
 function Section({ n, title, children }: { n: string; title: string; children: ReactNode }) {
@@ -118,7 +118,7 @@ export default function AboutPage() {
   return (
     <main className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-8 sm:py-12 print:max-w-none print:p-0">
       <header className="flex items-center justify-between gap-4 border-b border-line pb-6">
-        <Link href="/" aria-label="StopSync home">
+        <Link href="/" aria-label="Tap&Select home">
           <Wordmark />
         </Link>
         <PrintButton />
@@ -131,7 +131,7 @@ export default function AboutPage() {
           who is waiting.
         </h1>
         <p className="mt-4 max-w-2xl text-lg text-muted">
-          StopSync is a digital waiting list: tap a card, say your stop, get a queue number, and HQ sends the bus
+          Tap&Select is a digital waiting list: tap a card, say your stop, get a queue number, and HQ sends the bus
           when the queue is ready.
         </p>
       </div>
@@ -209,7 +209,7 @@ export default function AboutPage() {
       </Section>
 
       <footer className="border-t border-line pt-6 text-sm text-muted">
-        StopSync · CMU-Africa Bridge Program · Prototype, not for production use
+        Tap&Select · CMU-Africa Bridge Program · Prototype, not for production use
       </footer>
     </main>
   );

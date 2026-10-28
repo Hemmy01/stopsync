@@ -11,7 +11,7 @@ release appears during the demo.
 
 | # | Say / do | What they should see | If it doesn't work |
 |---|---|---|---|
-| 1 | "Passengers wait without knowing if a bus is coming. StopSync is a digital waiting list." Show the kiosk idle screen and the *How to choose your stop* sign. | Kiosk idle, board status pill **Connected**, LED off. | Pill says *Not connected*: click **Connect board**. Still nothing: press **D** for the mock drawer and continue; say "the board's messages go through exactly this path". |
+| 1 | "Passengers wait without knowing if a bus is coming. Tap&Select is a digital waiting list." Show the kiosk idle screen and the *How to choose your stop* sign. | Kiosk idle, board status pill **Connected**, LED off. | Pill says *Not connected*: click **Connect board**. Still nothing: press **D** for the mock drawer and continue; say "the board's messages go through exactly this path". |
 | 2 | Tap the card reader → **Demo card 1**. | *Say your stop or show a gesture*, tiles with hints, LED **blue breathing**. | LED stays off: replug USB, **Connect board**, repeat. Fallback: drawer `STATE,LISTENING`. |
 | 3 | **Tap twice** over the sensor (about 2 cm, quick). | *Downtown?* with **Gesture · 100%**, LED **purple**. | Not recognised within ~5 s: tap twice again, slower and closer. Fallback: tap the **Downtown** tile ("the on-screen fallback for when the model doesn't catch it"). |
 | 4 | Press **Change**, then say **"Kimironko"** (voice build) or **hold** your hand still. | Back to listening (board got `START` again), then *Kimironko?*, LED **yellow**. | Voice model not loaded: use hold. Hold not recognised: keep the hand still ~2 s, a few cm above. Fallback: drawer `SELECT,KIM,voice`. |

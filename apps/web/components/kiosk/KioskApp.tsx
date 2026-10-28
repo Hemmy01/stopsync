@@ -140,7 +140,7 @@ export function KioskApp() {
         />
 
         {network.error ? (
-          <Banner tone="danger" title="Can't reach StopSync right now" className="mb-6">
+          <Banner tone="danger" title="Can't reach Tap&Select right now" className="mb-6">
             {network.error} You can still tap a stop; numbers will be issued when the connection returns.
           </Banner>
         ) : null}
