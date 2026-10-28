@@ -16,6 +16,12 @@ interface DebugDrawerProps {
   onClose: () => void;
 }
 
+const DIRECTION = {
+  in: { arrow: "← ", className: "text-accent" },
+  out: { arrow: "→ ", className: "text-route-1" },
+  sys: { arrow: "• ", className: "text-muted" },
+} as const;
+
 const VOICE_CONF = 0.91;
 const GESTURE_CONF = 0.88;
 
@@ -52,7 +58,7 @@ export function DebugDrawer({ mock, log, onClose }: DebugDrawerProps) {
       <header className="flex h-20 shrink-0 items-center justify-between border-b border-line px-5">
         <div>
           <p className="font-display text-xl font-bold">Mock board</p>
-          <p className="text-sm text-muted">Lines go through the real serial parser · press D to hide</p>
+          <p className="text-sm text-muted">Same parser as the real board · press D to hide</p>
         </div>
         <button
           type="button"
@@ -118,9 +124,7 @@ export function DebugDrawer({ mock, log, onClose }: DebugDrawerProps) {
           {log.map((entry) => (
             <li key={entry.id} className="border-b border-line py-1">
               <span className="text-muted">{formatKigaliTime(entry.at, true)} </span>
-              <span className={entry.direction === "in" ? "text-accent" : "text-route-1"}>
-                {entry.direction === "in" ? "← " : "→ "}
-              </span>
+              <span className={DIRECTION[entry.direction].className}>{DIRECTION[entry.direction].arrow}</span>
               <span className={clsx(entry.note?.startsWith("Ignored") && "text-muted line-through")}>
                 {entry.text}
               </span>

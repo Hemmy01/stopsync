@@ -5,10 +5,12 @@ import { Banner } from "@/components/Banner";
 import { departureStatus, ticketStatusLine } from "@/lib/departures";
 import { STEP_TIMEOUT_MS } from "@/lib/kiosk-machine";
 import { STOP_ID } from "@/lib/supabase";
+import type { SerialConnection } from "@/lib/use-board";
 import { useKiosk } from "@/lib/use-kiosk";
 import { useLiveNetwork } from "@/lib/use-live-network";
 import { useStopName } from "@/lib/use-stop";
 import { ConfirmStage } from "./ConfirmStage";
+import { ConnectBoardControl } from "./ConnectBoardControl";
 import { DebugDrawer } from "./DebugDrawer";
 import { DepartureStrip } from "./DepartureStrip";
 import { IdleStage } from "./IdleStage";
@@ -29,6 +31,53 @@ function useMockParam(): boolean {
 
 function isTyping(target: EventTarget | null): boolean {
   return target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName));
+}
+
+interface BoardBannersProps {
+  supported: boolean;
+  connection: SerialConnection;
+  serialError: string | null;
+  mockMode: boolean;
+  onReconnect: () => void;
+}
+
+/** Board problems, always with the reassurance that tapping a stop still works. */
+function BoardBanners({ supported, connection, serialError, mockMode, onReconnect }: BoardBannersProps) {
+  if (serialError) {
+    return (
+      <Banner tone="danger" title="Board not connected" className="mb-6">
+        {serialError} Passengers can still tap a stop on screen.
+      </Banner>
+    );
+  }
+  if (connection === "lost") {
+    return (
+      <Banner
+        tone="warn"
+        title="Board disconnected"
+        className="mb-6"
+        action={
+          <button
+            type="button"
+            onClick={onReconnect}
+            className="h-14 rounded-card bg-ink px-5 text-base font-semibold text-paper"
+          >
+            Reconnect
+          </button>
+        }
+      >
+        Voice and gesture are paused. It reconnects automatically when plugged back in; passengers can still tap a stop.
+      </Banner>
+    );
+  }
+  if (!supported && !mockMode) {
+    return (
+      <Banner tone="info" title="This browser can't talk to the board" className="mb-6">
+        Open the kiosk in Chrome or Edge on the laptop. Passengers can still tap a stop on screen.
+      </Banner>
+    );
+  }
+  return null;
 }
 
 export function KioskApp() {
@@ -58,9 +107,28 @@ export function KioskApp() {
 
   return (
     <div className="flex h-dvh flex-col overflow-hidden text-[20px]">
-      <KioskTopBar stopName={stopName} boardStatus={board.status} />
+      <KioskTopBar
+        stopName={stopName}
+        boardStatus={board.status}
+        actions={
+          <ConnectBoardControl
+            supported={board.serialSupported}
+            connection={board.connection}
+            onConnect={(arduinoOnly) => void board.connect(arduinoOnly)}
+            onDisconnect={() => void board.disconnect()}
+          />
+        }
+      />
 
       <main className="flex min-h-0 flex-1 flex-col px-10 py-8">
+        <BoardBanners
+          supported={board.serialSupported}
+          connection={board.connection}
+          serialError={board.serialError}
+          mockMode={mockMode}
+          onReconnect={() => void board.connect(true)}
+        />
+
         {network.error ? (
           <Banner tone="danger" title="Can't reach StopSync right now" className="mb-6">
             {network.error} You can still tap a stop; numbers will be issued when the connection returns.
