@@ -55,7 +55,8 @@ export function computeTotals(tokens: readonly Token[], buses: readonly Bus[], d
   };
 }
 
-export const METHODS = ["voice", "gesture", "rfid", "manual"] as const;
+// RFID is simulated and only identifies the card, so it is not a way to choose a stop.
+export const METHODS = ["voice", "gesture", "manual"] as const;
 export type Method = (typeof METHODS)[number];
 
 export interface MethodShare {
@@ -178,4 +179,43 @@ export const CONFIG_LABELS: Record<string, { label: string; unit: string }> = {
 export function configValue(rows: readonly ConfigRow[], key: string, fallback: number): number {
   const row = rows.find((r) => r.key === key);
   return row ? Number(row.value) : fallback;
+}
+
+export interface InsightRow {
+  method: Method;
+  selections: number;
+  confirmed: number;
+  changed: number;
+  cancelledOrTimeout: number;
+  /** 0–100, null with no selections. */
+  confirmationRate: number | null;
+  /** 0–1, null when nothing had a confidence (manual taps). */
+  avgConfidence: number | null;
+}
+
+interface InsightSource {
+  method: string | null;
+  selections: number | null;
+  confirmed: number | null;
+  changed: number | null;
+  cancelled_or_timeout: number | null;
+  confirmation_rate: number | null;
+  avg_confidence: number | null;
+}
+
+/** One row per method from model_insights_today, zeros for methods not used yet. */
+export function insightRows(source: readonly InsightSource[]): InsightRow[] {
+  return METHODS.map((method) => {
+    const row = source.find((r) => r.method === method);
+    const selections = row?.selections ?? 0;
+    return {
+      method,
+      selections,
+      confirmed: row?.confirmed ?? 0,
+      changed: row?.changed ?? 0,
+      cancelledOrTimeout: row?.cancelled_or_timeout ?? 0,
+      confirmationRate: selections > 0 ? Number(row?.confirmation_rate ?? 0) : null,
+      avgConfidence: row?.avg_confidence == null ? null : Number(row.avg_confidence),
+    };
+  });
 }

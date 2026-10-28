@@ -2,7 +2,7 @@ import clsx from "clsx";
 import { Loader2 } from "lucide-react";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 
-type Variant = "primary" | "secondary" | "ink" | "quiet";
+type Variant = "primary" | "secondary" | "ink" | "quiet" | "danger";
 type Size = "md" | "lg" | "xl";
 
 const VARIANTS: Record<Variant, string> = {
@@ -10,6 +10,7 @@ const VARIANTS: Record<Variant, string> = {
   secondary: "border border-line bg-surface text-ink hover:border-ink",
   ink: "bg-ink text-paper hover:opacity-90",
   quiet: "text-muted hover:text-ink hover:bg-surface",
+  danger: "bg-danger text-white hover:opacity-90",
 };
 
 const SIZES: Record<Size, string> = {

@@ -72,7 +72,10 @@ export default function HomePage() {
           ))}
         </ul>
         <p className="mt-8 text-sm text-muted">
-          Prototype by the StopSync team · CMU-Africa Bridge Program
+          Prototype by the StopSync team · CMU-Africa Bridge Program ·{" "}
+          <Link href="/about" className="font-semibold text-ink underline underline-offset-4">
+            How it works
+          </Link>
         </p>
       </footer>
     </main>

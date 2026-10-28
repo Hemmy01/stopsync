@@ -4,11 +4,14 @@ import { Button } from "@/components/Button";
 import { KigaliClock } from "@/components/KigaliClock";
 import { Wordmark } from "@/components/Wordmark";
 import type { Totals } from "@/lib/dashboard";
+import { ResetDemoButton } from "./ResetDemoButton";
 
 interface DashboardHeaderProps {
   totals: Totals | null;
   onRecompute: () => void;
   recomputing: boolean;
+  onResetDemo: () => void;
+  resetting: boolean;
 }
 
 function Stat({ label, value }: { label: string; value: number | null }) {
@@ -24,7 +27,7 @@ function Stat({ label, value }: { label: string; value: number | null }) {
   );
 }
 
-export function DashboardHeader({ totals, onRecompute, recomputing }: DashboardHeaderProps) {
+export function DashboardHeader({ totals, onRecompute, recomputing, onResetDemo, resetting }: DashboardHeaderProps) {
   return (
     <header className="border-b border-line bg-paper">
       <div className="mx-auto flex max-w-[1440px] flex-wrap items-center gap-x-8 gap-y-4 px-4 py-4 sm:px-8">
@@ -46,6 +49,7 @@ export function DashboardHeader({ totals, onRecompute, recomputing }: DashboardH
           >
             Recompute now
           </Button>
+          <ResetDemoButton onConfirm={onResetDemo} pending={resetting} />
         </div>
       </div>
     </header>

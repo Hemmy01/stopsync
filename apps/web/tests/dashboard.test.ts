@@ -3,6 +3,7 @@ import {
   buildActivity,
   computeTotals,
   configValue,
+  insightRows,
   methodBreakdown,
   pendingByDestination,
   summarizeDestination,
@@ -116,7 +117,6 @@ describe("methodBreakdown", () => {
     expect(shares).toEqual([
       { method: "voice", count: 2, pct: 50 },
       { method: "gesture", count: 1, pct: 25 },
-      { method: "rfid", count: 0, pct: 0 },
       { method: "manual", count: 1, pct: 25 },
     ]);
   });
@@ -156,5 +156,24 @@ describe("configValue", () => {
     const rows = [{ key: "release_load_pct", value: 80, description: null }];
     expect(configValue(rows, "release_load_pct", 70)).toBe(80);
     expect(configValue(rows, "missing", 15)).toBe(15);
+  });
+});
+
+describe("insightRows", () => {
+  it("fills every method and keeps nulls honest", () => {
+    const rows = insightRows([
+      {
+        method: "voice",
+        selections: 4,
+        confirmed: 3,
+        changed: 1,
+        cancelled_or_timeout: 0,
+        confirmation_rate: 75,
+        avg_confidence: 0.884,
+      },
+    ]);
+    expect(rows.map((r) => r.method)).toEqual(["voice", "gesture", "manual"]);
+    expect(rows[0]).toMatchObject({ selections: 4, confirmationRate: 75, avgConfidence: 0.884 });
+    expect(rows[1]).toMatchObject({ selections: 0, confirmationRate: null, avgConfidence: null });
   });
 });

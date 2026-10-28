@@ -3,7 +3,6 @@ import type { Method, MethodShare } from "@/lib/dashboard";
 const METHOD_STYLE: Record<Method, { label: string; color: string }> = {
   voice: { label: "Voice (ML)", color: "var(--ink)" },
   gesture: { label: "Gesture (ML)", color: "var(--accent)" },
-  rfid: { label: "Card only", color: "var(--warn)" },
   manual: { label: "Tap on screen", color: "var(--muted)" },
 };
 
@@ -44,7 +43,7 @@ export function MethodBreakdown({ total, shares }: { total: number; shares: Meth
         </>
       )}
 
-      <ul className="mt-4 grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+      <ul className="mt-4 grid gap-y-2 text-sm">
         {shares.map((s) => (
           <li key={s.method} className="flex items-center gap-2">
             <span aria-hidden className="h-3 w-3 rounded-sm" style={{ backgroundColor: METHOD_STYLE[s.method].color }} />
