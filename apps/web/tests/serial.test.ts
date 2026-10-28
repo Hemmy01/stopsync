@@ -11,6 +11,7 @@ function fakePort() {
   let writable: WritableStream<Uint8Array> | null = null;
 
   const port = {
+    setSignals: vi.fn(async () => {}),
     open: vi.fn(async () => {
       readable = new ReadableStream<Uint8Array>({ start: (c) => void (controller = c) });
       writable = new WritableStream<Uint8Array>({ write: (chunk) => void written.push(decoder.decode(chunk)) });
@@ -30,6 +31,7 @@ function fakePort() {
   return {
     port: port as unknown as SerialPort,
     open: port.open,
+    setSignals: port.setSignals,
     written,
     feed: (text: string) => controller.enqueue(encoder.encode(text)),
     unplug: () => {
@@ -57,6 +59,40 @@ describe("WebSerialBoard", () => {
     await tick();
 
     expect(lines).toEqual(["HELLO,STOP-01", "STATE,LISTENING"]);
+    await board.close();
+  });
+
+  it("raises DTR after opening so the firmware sends HELLO", async () => {
+    const fake = fakePort();
+    const board = new WebSerialBoard(fake.port, () => {});
+    await board.open();
+    expect(fake.setSignals).toHaveBeenCalledWith({ dataTerminalReady: true, requestToSend: true });
+    await board.close();
+  });
+
+  it("requestHello drops then raises DTR", async () => {
+    const fake = fakePort();
+    const board = new WebSerialBoard(fake.port, () => {});
+    await board.open();
+    fake.setSignals.mockClear();
+    await board.requestHello();
+    expect(fake.setSignals.mock.calls).toEqual([
+      [{ dataTerminalReady: false, requestToSend: false }],
+      [{ dataTerminalReady: true, requestToSend: true }],
+    ]);
+    await board.close();
+  });
+
+  it("still opens when the port can't set signals", async () => {
+    const fake = fakePort();
+    fake.setSignals.mockRejectedValue(new DOMException("Not supported", "NotSupportedError"));
+    const board = new WebSerialBoard(fake.port, () => {});
+    const lines: string[] = [];
+    board.onLine((l) => lines.push(l));
+    await board.open();
+    fake.feed("HELLO,STOP-01\n");
+    await tick();
+    expect(lines).toEqual(["HELLO,STOP-01"]);
     await board.close();
   });
 
