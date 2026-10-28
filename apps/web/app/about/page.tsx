@@ -2,6 +2,22 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { PrintButton } from "@/components/about/PrintButton";
+import {
+  BENEFITS,
+  BurgerParagraph,
+  Cite,
+  CLOSING_LINE,
+  CONCLUSION,
+  FEATURES_TO_BENEFITS,
+  FLOW_STEPS,
+  REFERENCES,
+  ReferenceLine,
+  ROADMAP_PHASES,
+  SENSE_DECIDE_INFORM,
+  TAGLINE,
+  TEAM,
+  UPGRADES,
+} from "@/components/pitch/content";
 import { RouteBadge } from "@/components/RouteBadge";
 import { Wordmark } from "@/components/Wordmark";
 import { DESTINATIONS, NON_SELECTING_VOICE_LABELS } from "@/lib/destinations";
@@ -9,7 +25,7 @@ import { formatAccuracy, headlineAccuracy, MODEL_STATUS_LABEL, MODELS } from "@/
 
 export const metadata: Metadata = {
   title: "About · Tap&Select",
-  description: "How Tap&Select works: a digital waiting list for Kigali's buses.",
+  description: "How Tap&Select works: making passenger demand visible, so buses move when people are ready.",
 };
 
 function Section({ n, title, children }: { n: string; title: string; children: ReactNode }) {
@@ -24,40 +40,13 @@ function Section({ n, title, children }: { n: string; title: string; children: R
   );
 }
 
-const JOBS = [
-  { step: "Sense", detail: "A passenger taps a card, then says their stop or taps over the sensor. The board recognises it on-device and the kiosk issues a queue number." },
-  { step: "Decide", detail: "Postgres rules watch demand per destination every minute and recommend releasing a bus at 70% load or a 15-minute wait. HQ approves." },
-  { step: "Inform", detail: "The kiosk shows the ticket, the bus and its live ETA from the driver's phone GPS. Arrival boards the oldest waiting passengers." },
-] as const;
-
-const WHERE = [
-  { place: "Board", what: "Arduino Nano 33 BLE Sense Lite: microphone + proximity sensor, an Edge Impulse voice model, a rule-based tap detector, RGB LED. No internet." },
-  { place: "Browser", what: "Kiosk page (Chrome, Web Serial over USB), HQ dashboard, bus driver page (phone GPS). A Next.js web app, run from the laptop for now; hosting on Vercel is the next step." },
-  { place: "Cloud", what: "Supabase Postgres: queue numbers, dispatch rules, boarding as SQL functions; Realtime pushes every change; pg_cron runs dispatch each minute." },
-] as const;
-
 const REAL = [
   ["Voice choice", "Real: Edge Impulse keyword model on the board"],
   ["Tap choice over the sensor", "Real: rule-based tap detector on the board (a trained tap model is not built yet)"],
   ["Kiosk, database, dispatch, dashboard", "Real"],
   ["Bus location", "Real phone GPS (/bus page)"],
-  ["Card tap (RFID)", "Simulated: 5 demo cards on screen"],
-  ["Bus arrival", "Driver button, GPS radius or HQ button"],
+  ["Card tap (RFID)", "Simulated: demo cards on screen"],
   ["Other stops", "Simulator script"],
-] as const;
-
-const HARDWARE = [
-  "Arduino Nano 33 BLE Sense Lite (nRF52840, 256 KB RAM): PDM microphone, APDS9960 proximity sensor, RGB LED",
-  "Laptop running Chrome as the kiosk screen, board on USB",
-  "Any phone with GPS as the bus tracker",
-] as const;
-
-const FUTURE = [
-  ["RC522 RFID + Tap&Go", "real card taps, linked to Kigali's existing bus cards"],
-  ["Trained tap model", "an Edge Impulse model for taps, replacing the hand-written rules (data logger ready)"],
-  ["Camera module", "finger-count hand gestures (not built; today's gestures are taps over the sensor)"],
-  ["LTE + solar kiosk", "stand-alone stops with no laptop or mains power"],
-  ["Operator GPS", "live positions from the bus operators' own trackers"],
 ] as const;
 
 function VoiceModelCard() {
@@ -172,55 +161,109 @@ export default function AboutPage() {
         <Link href="/" aria-label="Tap&Select home">
           <Wordmark />
         </Link>
-        <PrintButton />
+        <div className="flex items-center gap-3 print:hidden">
+          <Link
+            href="/pitch"
+            className="inline-flex h-12 items-center rounded-card border border-ink px-4 font-semibold transition-colors duration-200 ease-out hover:bg-surface"
+          >
+            Pitch
+          </Link>
+          <PrintButton />
+        </div>
       </header>
 
       <div className="py-10">
-        <p className="text-sm font-semibold uppercase tracking-[0.12em] text-muted">About the prototype</p>
-        <h1 className="mt-2 text-[40px] leading-[1.05] sm:text-[52px]">
-          Passengers in Kigali wait at stops without knowing if a bus is coming, and operators can&rsquo;t see
-          who is waiting.
-        </h1>
-        <p className="mt-4 max-w-2xl text-lg text-muted">
-          Tap&Select is a digital waiting list: tap a card, say your stop, get a queue number, and HQ sends the bus
-          when the queue is ready.
+        <p className="text-sm font-semibold uppercase tracking-[0.12em] text-muted">
+          Problem → Solution → Tech → Conclusion
         </p>
+        <h1 className="mt-2 text-[40px] leading-[1.05] sm:text-[52px]">{TAGLINE}</h1>
+        <p className="mt-4 text-muted">{TEAM.join(" · ")} · CMU-Africa Bridge Program 2026</p>
       </div>
 
-      <Section n="01" title="Sense → Decide → Inform">
+      <Section n="01" title="The problem: an invisible queue">
+        <p className="max-w-2xl text-lg">
+          How long did you wait for a bus this week? A Kigali commuter leaves work at 6 PM and reaches home after
+          9 PM, and Rwanda&rsquo;s transport regulator has said the average wait can reach one hour.
+          <Cite n={1} />
+        </p>
+        <p className="mt-3 max-w-2xl">
+          Buses wait for passengers while passengers wait for buses, because neither side can see the other.
+          Off-peak scheduled buses left with only 10&ndash;15 passengers,
+          <Cite n={2} /> while at peak and holiday times travellers waited several hours.
+          <Cite n={4} /> Furthermore, Kigali needed about 500 buses but had 229 in 2022.
+          <Cite n={1} /> Nobody measures who is waiting, where, or for which destination.
+        </p>
+      </Section>
+
+      <Section n="02" title="Justification">
+        <BurgerParagraph size="page" />
+      </Section>
+
+      <Section n="03" title="The solution">
+        <p className="mb-4 max-w-2xl text-lg font-semibold">
+          Every bus stop becomes a sensor. Every bus leaves for a reason.
+        </p>
         <ol className="grid gap-4 sm:grid-cols-3">
-          {JOBS.map((job, i) => (
-            <li key={job.step} className="rounded-card border border-line bg-surface p-5">
+          {SENSE_DECIDE_INFORM.map((s, i) => (
+            <li key={s.step} className="rounded-card border border-line bg-surface p-5">
               <span className="num text-sm text-muted">{String(i + 1).padStart(2, "0")}</span>
-              <h3 className="text-xl">{job.step}</h3>
-              <p className="mt-2 text-muted">{job.detail}</p>
+              <h3 className="text-xl">{s.step}</h3>
+              <p className="mt-2">{s.detail}</p>
             </li>
           ))}
         </ol>
-      </Section>
-
-      <Section n="02" title="What runs where">
-        <dl className="divide-y divide-line rounded-card border border-line bg-surface">
-          {WHERE.map((row) => (
-            <div key={row.place} className="grid gap-1 p-4 sm:grid-cols-[140px_1fr] sm:gap-6">
-              <dt className="font-display text-lg font-semibold">{row.place}</dt>
-              <dd className="text-muted">{row.what}</dd>
+        <p className="mt-4">
+          Tap&amp;Select works with Generation 2: schedules plus real demand.
+          <Cite n={3} />
+        </p>
+        <div className="mt-6 grid gap-4 sm:grid-cols-3">
+          {BENEFITS.map((b) => (
+            <div key={b.who} className="rounded-card border border-line bg-surface p-5">
+              <h3 className="text-lg">{b.who}</h3>
+              <p className="mt-1">{b.text}</p>
             </div>
           ))}
-        </dl>
+        </div>
       </Section>
 
-      <Section n="03" title="Real vs simulated">
-        <table className="w-full rounded-card border border-line bg-surface text-left">
+      <Section n="04" title="How it works">
+        <ol className="grid gap-3 sm:grid-cols-5">
+          {FLOW_STEPS.map((s) => (
+            <li key={s.n} className="rounded-card border border-line bg-surface p-4">
+              <span className="num text-sm text-muted">{s.n}</span>
+              <h3 className="text-base leading-tight">{s.title}</h3>
+              <p className="mt-1 text-sm text-muted">{s.detail}</p>
+            </li>
+          ))}
+        </ol>
+        <table className="mt-6 w-full text-left text-sm sm:text-base">
+          <caption className="sr-only">Features and their benefits</caption>
           <thead>
-            <tr className="border-b border-line text-sm text-muted">
-              <th className="p-3 font-normal">Part</th>
-              <th className="p-3 font-normal">In this demo</th>
+            <tr className="border-b-2 border-ink text-muted">
+              <th className="py-2 pr-4 font-normal">Feature</th>
+              <th className="py-2 font-normal">Benefit</th>
             </tr>
           </thead>
           <tbody>
+            {FEATURES_TO_BENEFITS.map(([feature, benefit]) => (
+              <tr key={feature} className="border-b border-line">
+                <td className="py-2 pr-4 font-medium">{feature}</td>
+                <td className="py-2">{benefit}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <div className="mt-6 grid gap-4 md:grid-cols-2">
+          <VoiceModelCard />
+          <TapRulesCard />
+        </div>
+        <table className="mt-6 w-full rounded-card border border-line bg-surface text-left">
+          <caption className="p-3 text-left text-sm font-semibold uppercase tracking-[0.12em] text-muted">
+            Real vs simulated in this prototype
+          </caption>
+          <tbody>
             {REAL.map(([part, status]) => (
-              <tr key={part} className="border-b border-line last:border-b-0">
+              <tr key={part} className="border-t border-line">
                 <td className="p-3 font-medium">{part}</td>
                 <td className="p-3 text-muted">{status}</td>
               </tr>
@@ -229,34 +272,39 @@ export default function AboutPage() {
         </table>
       </Section>
 
-      <Section n="04" title="How the board recognises a choice">
-        <p className="mb-4 max-w-2xl text-muted">
-          Both run on the microcontroller itself while the kiosk is listening; whichever is sure first wins, and the
-          passenger then confirms on screen. If neither catches it, the passenger taps the stop on the screen.
-        </p>
-        <div className="grid gap-4 md:grid-cols-2">
-          <VoiceModelCard />
-          <TapRulesCard />
-        </div>
-      </Section>
-
-      <Section n="05" title="Hardware">
-        <ul className="list-disc space-y-1 pl-5 text-muted">
-          {HARDWARE.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ul>
-      </Section>
-
-      <Section n="06" title="Next upgrades">
-        <ul className="grid gap-3 sm:grid-cols-2">
-          {FUTURE.map(([name, detail]) => (
-            <li key={name} className="rounded-card border border-line bg-surface p-4">
-              <span className="font-semibold">{name}</span>
-              <span className="block text-muted">{detail}</span>
+      <Section n="05" title="Roadmap">
+        <ol className="grid gap-3 sm:grid-cols-3">
+          {ROADMAP_PHASES.map((p) => (
+            <li key={p.phase} className="rounded-card border border-line bg-surface p-4">
+              <span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">{p.when}</span>
+              <h3 className="text-lg">{p.phase}</h3>
+              <p className="text-muted">{p.detail}</p>
             </li>
           ))}
-        </ul>
+        </ol>
+        <p className="mt-4 text-muted">Upgrades: {UPGRADES.join(" · ")}.</p>
+      </Section>
+
+      <Section n="06" title="Conclusion">
+        <dl className="space-y-2">
+          {CONCLUSION.map((c) => (
+            <div key={c.label} className="grid gap-1 sm:grid-cols-[120px_1fr] sm:gap-4">
+              <dt className="font-semibold">{c.label}</dt>
+              <dd>{c.text}</dd>
+            </div>
+          ))}
+        </dl>
+        <p className="mt-6 font-display text-2xl font-bold leading-tight">{CLOSING_LINE}</p>
+      </Section>
+
+      <Section n="07" title="References">
+        <ol className="space-y-2 text-sm">
+          {REFERENCES.map((r) => (
+            <li key={r.n} className="pl-8 -indent-8">
+              <ReferenceLine reference={r} />
+            </li>
+          ))}
+        </ol>
       </Section>
 
       <footer className="border-t border-line pt-6 text-sm text-muted">
