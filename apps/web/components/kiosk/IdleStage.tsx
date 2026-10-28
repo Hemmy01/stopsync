@@ -65,7 +65,7 @@ export function IdleStage({ reading, testCard, onTap }: IdleStageProps) {
         <p className="text-lg font-semibold uppercase tracking-[0.12em] text-muted">Welcome</p>
         <h1 className="mt-3 text-[56px] leading-[1.05]">Tap your card to begin</h1>
         <p className="mt-5 max-w-lg text-[22px] text-muted">
-          Then say your stop or show a gesture. You&rsquo;ll get a queue number and live bus times.
+          Then say your stop or tap over the sensor. You&rsquo;ll get a queue number and live bus times.
         </p>
         <HowToChoose />
       </div>

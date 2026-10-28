@@ -5,7 +5,8 @@ Built in the CMU-Africa Bridge Program.
 
 1. A passenger **taps a card** at the kiosk.
 2. They choose their stop by **voice** or a **tap gesture** over the proximity sensor
-   (two Edge Impulse models on an Arduino Nano 33 BLE Sense Lite).
+   on an Arduino Nano 33 BLE Sense Lite: an Edge Impulse voice model and, for now, a rule-based tap
+   detector (a trained tap model is planned).
 3. They confirm and get a **queue number** such as `R3-014`.
 4. HQ sees live demand on a **dashboard**, gets a "release a bus" recommendation, and approves it.
 5. The kiosk shows the **bus status and ETA**, updated from the driver's phone GPS.

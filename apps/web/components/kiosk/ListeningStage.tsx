@@ -34,7 +34,7 @@ export function ListeningStage({ onSelect, onCancel }: ListeningStageProps) {
               Listening
             </p>
           </div>
-          <h1 className="mt-3 text-[52px] leading-[1.05]">Say your stop or show a gesture</h1>
+          <h1 className="mt-3 text-[52px] leading-[1.05]">Say your stop or tap the sensor</h1>
         </div>
         <StepCountdown ms={STEP_TIMEOUT_MS.listening ?? 20_000} label="Cancels in" />
       </div>

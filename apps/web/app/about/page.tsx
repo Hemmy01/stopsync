@@ -4,8 +4,8 @@ import type { ReactNode } from "react";
 import { PrintButton } from "@/components/about/PrintButton";
 import { RouteBadge } from "@/components/RouteBadge";
 import { Wordmark } from "@/components/Wordmark";
-import { DESTINATIONS, NON_SELECTING_GESTURE_LABELS, NON_SELECTING_VOICE_LABELS } from "@/lib/destinations";
-import { formatAccuracy, headlineAccuracy, MODEL_STATUS_LABEL, MODELS, type ModelKey } from "@/lib/models";
+import { DESTINATIONS, NON_SELECTING_VOICE_LABELS } from "@/lib/destinations";
+import { formatAccuracy, headlineAccuracy, MODEL_STATUS_LABEL, MODELS } from "@/lib/models";
 
 export const metadata: Metadata = {
   title: "About · Tap&Select",
@@ -25,19 +25,20 @@ function Section({ n, title, children }: { n: string; title: string; children: R
 }
 
 const JOBS = [
-  { step: "Sense", detail: "A passenger taps a card and says their stop or taps a gesture. The board recognises it on-device and the kiosk issues a queue number." },
+  { step: "Sense", detail: "A passenger taps a card, then says their stop or taps over the sensor. The board recognises it on-device and the kiosk issues a queue number." },
   { step: "Decide", detail: "Postgres rules watch demand per destination every minute and recommend releasing a bus at 70% load or a 15-minute wait. HQ approves." },
   { step: "Inform", detail: "The kiosk shows the ticket, the bus and its live ETA from the driver's phone GPS. Arrival boards the oldest waiting passengers." },
 ] as const;
 
 const WHERE = [
-  { place: "Board", what: "Arduino Nano 33 BLE Sense Lite: microphone + proximity sensor, two Edge Impulse models, RGB LED. No internet." },
-  { place: "Browser", what: "Kiosk page (Chrome, Web Serial over USB), HQ dashboard, bus driver page (phone GPS). Next.js on Vercel." },
+  { place: "Board", what: "Arduino Nano 33 BLE Sense Lite: microphone + proximity sensor, an Edge Impulse voice model, a rule-based tap detector, RGB LED. No internet." },
+  { place: "Browser", what: "Kiosk page (Chrome, Web Serial over USB), HQ dashboard, bus driver page (phone GPS). A Next.js web app, run from the laptop for now; hosting on Vercel is the next step." },
   { place: "Cloud", what: "Supabase Postgres: queue numbers, dispatch rules, boarding as SQL functions; Realtime pushes every change; pg_cron runs dispatch each minute." },
 ] as const;
 
 const REAL = [
-  ["Voice and tap-gesture choice", "Real, on the board"],
+  ["Voice choice", "Real: Edge Impulse keyword model on the board"],
+  ["Tap choice over the sensor", "Real: rule-based tap detector on the board (a trained tap model is not built yet)"],
   ["Kiosk, database, dispatch, dashboard", "Real"],
   ["Bus location", "Real phone GPS (/bus page)"],
   ["Card tap (RFID)", "Simulated: 5 demo cards on screen"],
@@ -53,22 +54,22 @@ const HARDWARE = [
 
 const FUTURE = [
   ["RC522 RFID + Tap&Go", "real card taps, linked to Kigali's existing bus cards"],
-  ["Camera module", "finger-count gestures instead of taps"],
+  ["Trained tap model", "an Edge Impulse model for taps, replacing the hand-written rules (data logger ready)"],
+  ["Camera module", "finger-count hand gestures (not built; today's gestures are taps over the sensor)"],
   ["LTE + solar kiosk", "stand-alone stops with no laptop or mains power"],
   ["Operator GPS", "live positions from the bus operators' own trackers"],
 ] as const;
 
-function ModelCard({ model, title, sensor }: { model: ModelKey; title: string; sensor: string }) {
-  const info = MODELS[model];
+function VoiceModelCard() {
+  const info = MODELS.voice;
   const accuracy = headlineAccuracy(info);
-  const stopLabel = (label: string) =>
-    DESTINATIONS.find((d) => (model === "voice" ? d.voiceLabel : d.gestureLabel) === label);
-  const nonSelecting: readonly string[] = model === "voice" ? NON_SELECTING_VOICE_LABELS : NON_SELECTING_GESTURE_LABELS;
+  const stopFor = (label: string) => DESTINATIONS.find((d) => d.voiceLabel === label);
+  const nonSelecting: readonly string[] = NON_SELECTING_VOICE_LABELS;
 
   return (
     <article className="break-inside-avoid rounded-card border border-line bg-surface p-5">
-      <h3 className="text-xl">{title}</h3>
-      <p className="text-sm text-muted">{sensor}</p>
+      <h3 className="text-xl">Voice keywords</h3>
+      <p className="text-sm text-muted">Edge Impulse model · PDM microphone, 16 kHz, 1 s windows</p>
       <dl className="mt-4 grid grid-cols-3 gap-3 text-sm">
         <div className="col-span-2">
           <dt className="text-muted">Status</dt>
@@ -76,11 +77,15 @@ function ModelCard({ model, title, sensor }: { model: ModelKey; title: string; s
         </div>
         <div>
           <dt className="text-muted">{accuracy.kind === "test" ? "Test accuracy" : "Validation accuracy"}</dt>
-          <dd className="num font-semibold">{formatAccuracy(accuracy.value)}</dd>
+          {accuracy.value === null ? (
+            <dd className="font-semibold">Pending</dd>
+          ) : (
+            <dd className="num font-semibold">{formatAccuracy(accuracy.value)}</dd>
+          )}
         </div>
       </dl>
       <table className="mt-4 w-full text-sm">
-        <caption className="sr-only">{title} labels</caption>
+        <caption className="sr-only">Voice labels</caption>
         <thead>
           <tr className="border-b border-line text-left text-muted">
             <th className="py-1.5 font-normal">Label</th>
@@ -89,7 +94,7 @@ function ModelCard({ model, title, sensor }: { model: ModelKey; title: string; s
         </thead>
         <tbody>
           {info.labels.map((label) => {
-            const d = stopLabel(label);
+            const d = stopFor(label);
             return (
               <tr key={label} className="border-b border-line last:border-b-0">
                 <td className="num py-1.5">{label}</td>
@@ -110,7 +115,52 @@ function ModelCard({ model, title, sensor }: { model: ModelKey; title: string; s
           })}
         </tbody>
       </table>
-      {info.updated ? <p className="mt-3 text-xs text-muted">Exported {info.updated}</p> : null}
+      <p className="mt-3 text-xs text-muted">
+        Selects when one stop scores at least 0.80 twice in a row (one result every 250 ms).
+        {info.updated ? ` Exported ${info.updated}.` : ""}
+      </p>
+    </article>
+  );
+}
+
+function TapRulesCard() {
+  return (
+    <article className="break-inside-avoid rounded-card border border-line bg-surface p-5">
+      <h3 className="text-xl">Taps over the sensor</h3>
+      <p className="text-sm text-muted">Rule-based detector (no ML yet) · APDS9960 proximity sensor</p>
+      <dl className="mt-4 grid grid-cols-3 gap-3 text-sm">
+        <div className="col-span-3">
+          <dt className="text-muted">Status</dt>
+          <dd className="font-semibold">{MODEL_STATUS_LABEL[MODELS.gesture.status]}</dd>
+        </div>
+      </dl>
+      <table className="mt-4 w-full text-sm">
+        <caption className="sr-only">Tap patterns</caption>
+        <thead>
+          <tr className="border-b border-line text-left text-muted">
+            <th className="py-1.5 font-normal">Over the sensor</th>
+            <th className="py-1.5 font-normal">Selects</th>
+          </tr>
+        </thead>
+        <tbody>
+          {DESTINATIONS.map((d) => (
+            <tr key={d.code} className="border-b border-line last:border-b-0">
+              <td className="py-1.5">{d.gestureHint}</td>
+              <td className="py-1.5">
+                <span className="flex items-center gap-2">
+                  <RouteBadge code={d.code} size="sm" />
+                  {d.name}
+                </span>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="mt-3 text-xs text-muted">
+        A tap is a hand coming within a few centimetres and leaving within 0.6 s; taps less than 0.7 s apart count
+        together; a still hand for 1.8 s is a hold. A trained Edge Impulse tap model is planned and the data logger
+        for it is ready.
+      </p>
     </article>
   );
 }
@@ -179,14 +229,14 @@ export default function AboutPage() {
         </table>
       </Section>
 
-      <Section n="04" title="The two models on the board">
+      <Section n="04" title="How the board recognises a choice">
         <p className="mb-4 max-w-2xl text-muted">
-          Both are trained in Edge Impulse and run on the microcontroller itself. A stop is chosen only when one
-          label scores at least 0.80 twice in a row; the passenger then confirms on screen.
+          Both run on the microcontroller itself while the kiosk is listening; whichever is sure first wins, and the
+          passenger then confirms on screen. If neither catches it, the passenger taps the stop on the screen.
         </p>
         <div className="grid gap-4 md:grid-cols-2">
-          <ModelCard model="voice" title="Voice keywords" sensor="PDM microphone, 16 kHz, 1 s windows" />
-          <ModelCard model="gesture" title="Tap gestures" sensor="APDS9960 proximity + clear light, 20 Hz, 3 s windows" />
+          <VoiceModelCard />
+          <TapRulesCard />
         </div>
       </Section>
 

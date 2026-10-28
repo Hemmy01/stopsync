@@ -10,7 +10,7 @@ export interface Destination {
   color: string;
   /** Edge Impulse voice model label. */
   voiceLabel: string;
-  /** Edge Impulse tap-gesture model label. */
+  /** Tap pattern label (rule detector today, future Edge Impulse tap model). */
   gestureLabel: string;
   /** What the passenger does, e.g. "Tap once". */
   gestureHint: string;
