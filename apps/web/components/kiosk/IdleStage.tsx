@@ -92,7 +92,7 @@ export function IdleStage({ reading, onTap }: IdleStageProps) {
                       setPicking(false);
                       onTap(card.id);
                     }}
-                    className="flex h-16 w-full items-center justify-between rounded-card border border-line px-5 text-left font-semibold transition-colors duration-200 ease-out hover:border-ink"
+                    className="flex h-14 w-full items-center justify-between rounded-card border border-line px-5 text-left font-semibold transition-colors duration-200 ease-out hover:border-ink"
                   >
                     <span>{card.label}</span>
                     <span className="num text-base font-normal text-muted">{card.id}</span>
@@ -107,7 +107,7 @@ export function IdleStage({ reading, onTap }: IdleStageProps) {
                     setPicking(false);
                     onTap(newTestCardId());
                   }}
-                  className="flex h-16 w-full items-center justify-between rounded-card border border-dashed border-ink px-5 text-left font-semibold transition-colors duration-200 ease-out hover:bg-paper"
+                  className="flex h-14 w-full items-center justify-between rounded-card border border-dashed border-ink px-5 text-left font-semibold transition-colors duration-200 ease-out hover:bg-paper"
                 >
                   <span>Test card</span>
                   <span className="text-base font-normal text-muted">New passenger every tap</span>
