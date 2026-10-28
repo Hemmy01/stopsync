@@ -9,7 +9,6 @@ const SCREENS = [
   { href: "/kiosk", label: "Kiosk", detail: "Passenger screen at the stop" },
   { href: "/dashboard", label: "Dashboard", detail: "HQ demand and dispatch" },
   { href: "/bus", label: "Bus", detail: "Driver phone, shares GPS" },
-  { href: "/pitch", label: "Pitch", detail: "Slides for the judges" },
 ] as const;
 
 export default function HomePage() {
@@ -76,6 +75,10 @@ export default function HomePage() {
           Prototype by the Tap&Select team · CMU-Africa Bridge Program ·{" "}
           <Link href="/about" className="font-semibold text-ink underline underline-offset-4">
             How it works
+          </Link>
+          {" · "}
+          <Link href="/pitch" className="font-semibold text-ink underline underline-offset-4">
+            Pitch
           </Link>
         </p>
       </footer>
