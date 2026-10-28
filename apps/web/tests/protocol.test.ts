@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createLineBuffer, formatCommand, parseBoardLine } from "@/lib/protocol";
+import { createLineBuffer, formatCommand, parseBoardLine, parseScores } from "@/lib/protocol";
 
 describe("parseBoardLine", () => {
   it("parses HELLO", () => {
@@ -32,10 +32,11 @@ describe("parseBoardLine", () => {
   });
 
   it("parses LOG with free-form text, commas included", () => {
-    expect(parseBoardLine("LOG,voice=VOICE_OFF,gesture=GESTURE_RULE")).toEqual({
+    expect(parseBoardLine("LOG,voice=model,gesture=rule,fw=0.2.0")).toEqual({
       ok: true,
-      message: { type: "LOG", text: "voice=VOICE_OFF,gesture=GESTURE_RULE" },
+      message: { type: "LOG", text: "voice=model,gesture=rule,fw=0.2.0" },
     });
+    expect(parseBoardLine("LOG,voice_overrun")).toEqual({ ok: true, message: { type: "LOG", text: "voice_overrun" } });
     expect(parseBoardLine("LOG")).toEqual({ ok: true, message: { type: "LOG", text: "" } });
     expect(parseBoardLine("LOGGING,x").ok).toBe(false);
   });
@@ -69,6 +70,36 @@ describe("parseBoardLine", () => {
   });
 });
 
+describe("parseScores", () => {
+  const line = "LOG,scores,downtown=0.02,kimironko=0.01,noise=0.03,nyabugogo=0.00,remera=0.93,unknown=0.01";
+
+  it("reads every label from a LOG,scores line", () => {
+    const parsed = parseBoardLine(line);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok || parsed.message.type !== "LOG") throw new Error("expected LOG");
+    expect(parseScores(parsed.message.text)).toEqual([
+      { label: "downtown", value: 0.02 },
+      { label: "kimironko", value: 0.01 },
+      { label: "noise", value: 0.03 },
+      { label: "nyabugogo", value: 0 },
+      { label: "remera", value: 0.93 },
+      { label: "unknown", value: 0.01 },
+    ]);
+  });
+
+  it.each([
+    ["voice=model,gesture=rule,fw=0.2.0", "not a scores line"],
+    ["scores", "no pairs"],
+    ["scores,remera", "missing value"],
+    ["scores,remera=", "blank value"],
+    ["scores,remera=high", "non-numeric value"],
+    ["scores,=0.5", "missing label"],
+    ["scores,remera=0.5=1", "two equals signs"],
+  ])("returns null for %j (%s)", (text) => {
+    expect(parseScores(text)).toBeNull();
+  });
+});
+
 describe("formatCommand", () => {
   it("formats kiosk commands", () => {
     expect(formatCommand({ type: "START" })).toBe("START");
@@ -86,6 +117,20 @@ describe("createLineBuffer", () => {
       "STATE,LISTENING",
       "SELECT,KIM,voice,0.9",
     ]);
+  });
+
+  it("splits several lines that arrive in one chunk", () => {
+    expect(
+      createLineBuffer().push("HELLO,STOP-01\r\nLOG,voice=model,gesture=rule,fw=0.2.0\r\nSTATE,LISTENING\r\n"),
+    ).toEqual(["HELLO,STOP-01", "LOG,voice=model,gesture=rule,fw=0.2.0", "STATE,LISTENING"]);
+  });
+
+  it("holds a line split across many chunks, even mid CRLF", () => {
+    const buffer = createLineBuffer();
+    const line = "LOG,scores,downtown=0.02,remera=0.93\r\n";
+    const out: string[] = [];
+    for (const ch of line) out.push(...buffer.push(ch));
+    expect(out).toEqual(["LOG,scores,downtown=0.02,remera=0.93"]);
   });
 
   it("skips blank lines", () => {

@@ -5,6 +5,8 @@ import { ARDUINO_USB_VENDOR_ID, BAUD_RATE, createLineBuffer } from "./protocol";
 
 export type LineListener = (line: string) => void;
 
+const DTR_PULSE_MS = 50;
+
 export interface BoardAdapter {
   readonly kind: "mock" | "serial";
   /** Subscribe to raw lines from the board. Returns an unsubscribe function. */
@@ -89,7 +91,25 @@ export class WebSerialBoard implements BoardAdapter {
 
   async open(): Promise<void> {
     await this.port.open({ baudRate: BAUD_RATE });
+    // Like a serial terminal: DTR high tells the firmware a program is listening,
+    // and it answers with HELLO.
+    await this.setDtr(true);
     this.readLoop = this.read();
+  }
+
+  /** Drop and raise DTR so the firmware sees the port open again and resends HELLO. */
+  async requestHello(): Promise<void> {
+    await this.setDtr(false);
+    await new Promise((resolve) => setTimeout(resolve, DTR_PULSE_MS));
+    await this.setDtr(true);
+  }
+
+  private async setDtr(on: boolean): Promise<void> {
+    try {
+      await this.port.setSignals({ dataTerminalReady: on, requestToSend: on });
+    } catch {
+      // Not supported by this port or already gone: reading still works.
+    }
   }
 
   onLine(listener: LineListener): () => void {

@@ -8,6 +8,7 @@ import { DESTINATIONS } from "@/lib/destinations";
 import type { MockBoard } from "@/lib/serial";
 import { STOP_ID } from "@/lib/supabase";
 import { formatKigaliTime } from "@/lib/time";
+import type { LabelScore } from "@/lib/protocol";
 import type { LogEntry } from "@/lib/use-board";
 
 interface DebugDrawerProps {
@@ -24,6 +25,34 @@ const DIRECTION = {
 
 const VOICE_CONF = 0.91;
 const GESTURE_CONF = 0.88;
+const BOOT_LOG = "LOG,voice=model,gesture=rule,fw=0.2.0";
+const SAMPLE_SCORES = "LOG,scores,downtown=0.02,kimironko=0.01,noise=0.03,nyabugogo=0.00,remera=0.93,unknown=0.01";
+
+/** "LOG,scores,..." as one bar per label; the top label is marked in text, not colour alone. */
+function ScoreBars({ scores }: { scores: readonly LabelScore[] }) {
+  const top = scores.reduce((best, s) => (s.value > best.value ? s : best), scores[0]);
+  return (
+    <ul className="mt-1 space-y-0.5 pl-[88px]" aria-label="Model scores">
+      {scores.map((s) => {
+        const isTop = s === top;
+        return (
+          <li key={s.label} className="flex items-center gap-2">
+            <span className={clsx("w-20 truncate", isTop ? "font-semibold text-ink" : "text-muted")}>{s.label}</span>
+            <span className="h-2 flex-1 overflow-hidden rounded-pill bg-line">
+              <span
+                className={clsx("block h-full", isTop ? "bg-accent" : "bg-muted")}
+                style={{ width: `${Math.round(Math.min(Math.max(s.value, 0), 1) * 100)}%` }}
+              />
+            </span>
+            <span className={clsx("w-10 text-right", isTop ? "font-semibold text-ink" : "text-muted")}>
+              {s.value.toFixed(2)}
+            </span>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
 
 function EmitButton({ line, onEmit, children }: { line: string; onEmit: (l: string) => void; children?: string }) {
   return (
@@ -77,8 +106,11 @@ export function DebugDrawer({ mock, log, onClose }: DebugDrawerProps) {
             <EmitButton line={`HELLO,${STOP_ID}`} onEmit={emit} />
             <EmitButton line="STATE,LISTENING" onEmit={emit} />
             <EmitButton line="STATE,IDLE" onEmit={emit} />
-            <EmitButton line="LOG,voice=VOICE_OFF,gesture=GESTURE_RULE" onEmit={emit}>
+            <EmitButton line={BOOT_LOG} onEmit={emit}>
               LOG
+            </EmitButton>
+            <EmitButton line={SAMPLE_SCORES} onEmit={emit}>
+              LOG scores
             </EmitButton>
           </div>
         </section>
@@ -125,13 +157,19 @@ export function DebugDrawer({ mock, log, onClose }: DebugDrawerProps) {
         <ol className="num min-h-0 flex-1 overflow-y-auto px-5 pb-5 text-[13px] leading-relaxed">
           {log.length === 0 ? <li className="text-muted">No lines yet.</li> : null}
           {log.map((entry) => (
-            <li key={entry.id} className="border-b border-line py-1">
+            <li key={entry.id} className="border-b border-line py-1 [overflow-wrap:anywhere]">
               <span className="text-muted">{formatKigaliTime(entry.at, true)} </span>
               <span className={DIRECTION[entry.direction].className}>{DIRECTION[entry.direction].arrow}</span>
               <span className={clsx(entry.note?.startsWith("Ignored") && "text-muted line-through")}>
                 {entry.text}
               </span>
-              {entry.note ? <span className="block pl-[88px] text-danger">{entry.note}</span> : null}
+              {entry.scores ? (
+                <ScoreBars scores={entry.scores} />
+              ) : entry.note ? (
+                <span className={clsx("block pl-[88px]", entry.note === "Diagnostics" ? "text-muted" : "text-danger")}>
+                  {entry.note}
+                </span>
+              ) : null}
             </li>
           ))}
         </ol>

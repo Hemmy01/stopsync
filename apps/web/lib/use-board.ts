@@ -1,7 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { formatCommand, parseBoardLine, type BoardMessage, type KioskCommand } from "./protocol";
+import {
+  formatCommand,
+  parseBoardLine,
+  parseScores,
+  type BoardMessage,
+  type KioskCommand,
+  type LabelScore,
+} from "./protocol";
 import { findGrantedPort, isWebSerialSupported, MockBoard, requestBoardPort, WebSerialBoard } from "./serial";
 
 export type BoardStatus = "connected" | "not_connected" | "mock";
@@ -16,6 +23,8 @@ export interface LogEntry {
   text: string;
   /** Why a line was rejected or ignored, or a send problem. */
   note?: string;
+  /** Per-label model scores from a "LOG,scores,..." line. */
+  scores?: LabelScore[];
 }
 
 /** Return a reason to mark the message as ignored in the log. */
@@ -23,6 +32,10 @@ export type MessageHandler = (message: BoardMessage) => string | void;
 
 const MAX_LOG = 200;
 const AUTO_RETRY_MS = 600;
+/** No HELLO this long after opening the port: ask the board again (DTR pulse). */
+const HELLO_RETRY_MS = 1500;
+/** Still no HELLO: tell the operator. */
+const HELLO_GIVE_UP_MS = 4000;
 
 const noopSubscribe = () => () => {};
 
@@ -42,6 +55,9 @@ export function useBoard({ mockMode, onMessage }: { mockMode: boolean; onMessage
   const [helloStopId, setHelloStopId] = useState<string | null>(null);
   const [connection, setConnection] = useState<SerialConnection>("idle");
   const [serialError, setSerialError] = useState<string | null>(null);
+  // The board only counts as connected once it said HELLO over this connection.
+  const [helloSeen, setHelloSeen] = useState(false);
+  const [noHello, setNoHello] = useState(false);
 
   const serialSupported = useSyncExternalStore(noopSubscribe, isWebSerialSupported, () => false);
 
@@ -63,7 +79,7 @@ export function useBoard({ mockMode, onMessage }: { mockMode: boolean; onMessage
 
   // The single entry point for every line from any adapter, mock or serial.
   const handleLine = useCallback(
-    (raw: string) => {
+    (raw: string, source: "mock" | "serial") => {
       const text = raw.trim();
       const result = parseBoardLine(text);
       if (!result.ok) {
@@ -72,10 +88,16 @@ export function useBoard({ mockMode, onMessage }: { mockMode: boolean; onMessage
       }
       const { message } = result;
       if (message.type === "LOG") {
-        append({ direction: "in", text, note: "Diagnostics" });
+        append({ direction: "in", text, note: "Diagnostics", scores: parseScores(message.text) ?? undefined });
         return;
       }
-      if (message.type === "HELLO") setHelloStopId(message.stopId);
+      if (message.type === "HELLO") {
+        setHelloStopId(message.stopId);
+        if (source === "serial") {
+          setHelloSeen(true);
+          setNoHello(false);
+        }
+      }
       if (message.type === "STATE") setBoardState(message.state);
       const ignored = onMessageRef.current(message);
       append({ direction: "in", text, note: ignored ? `Ignored: ${ignored}` : undefined });
@@ -83,7 +105,7 @@ export function useBoard({ mockMode, onMessage }: { mockMode: boolean; onMessage
     [append],
   );
 
-  useEffect(() => mock.onLine(handleLine), [mock, handleLine]);
+  useEffect(() => mock.onLine((line) => handleLine(line, "mock")), [mock, handleLine]);
 
   const handleLost = useCallback(
     (adapter: WebSerialBoard) => {
@@ -92,6 +114,8 @@ export function useBoard({ mockMode, onMessage }: { mockMode: boolean; onMessage
       void adapter.close();
       setConnection("lost");
       setBoardState(null);
+      setHelloSeen(false);
+      setNoHello(false);
       append({ direction: "sys", text: "Board disconnected" });
     },
     [append],
@@ -121,11 +145,13 @@ export function useBoard({ mockMode, onMessage }: { mockMode: boolean; onMessage
         return false;
       }
 
-      adapter.onLine(handleLine);
+      adapter.onLine((line) => handleLine(line, "serial"));
       serialRef.current = adapter;
       wasConnected.current = true;
+      setHelloSeen(false);
+      setNoHello(false);
       setConnection("connected");
-      append({ direction: "sys", text: "Connected to board" });
+      append({ direction: "sys", text: "Port open, waiting for HELLO" });
       return true;
     },
     [append, handleLine, handleLost],
@@ -153,8 +179,27 @@ export function useBoard({ mockMode, onMessage }: { mockMode: boolean; onMessage
     await adapter.close();
     setConnection("idle");
     setBoardState(null);
+    setHelloSeen(false);
+    setNoHello(false);
     append({ direction: "sys", text: "Disconnected from board" });
   }, [append]);
+
+  // Port open but the board hasn't introduced itself: ask once more, then say so.
+  useEffect(() => {
+    if (connection !== "connected" || helloSeen) return;
+    const retry = setTimeout(() => {
+      append({ direction: "sys", text: "No HELLO yet, asking the board again" });
+      void serialRef.current?.requestHello();
+    }, HELLO_RETRY_MS);
+    const giveUp = setTimeout(() => {
+      setNoHello(true);
+      append({ direction: "sys", text: "The board hasn't sent HELLO", note: "Replug it, or upload kiosk_node" });
+    }, HELLO_GIVE_UP_MS);
+    return () => {
+      clearTimeout(retry);
+      clearTimeout(giveUp);
+    };
+  }, [connection, helloSeen, append]);
 
   // Reconnect without a prompt to a port this site was already allowed to use:
   // on load, and whenever an allowed board is plugged back in.
@@ -218,13 +263,16 @@ export function useBoard({ mockMode, onMessage }: { mockMode: boolean; onMessage
     [append, mock, mockMode],
   );
 
-  const status: BoardStatus = connection === "connected" ? "connected" : mockMode ? "mock" : "not_connected";
+  const status: BoardStatus =
+    connection === "connected" && helloSeen ? "connected" : mockMode ? "mock" : "not_connected";
 
   return {
     status,
     connection,
     serialSupported,
     serialError,
+    /** The port is open but the board never sent HELLO. */
+    noHello,
     log,
     boardState,
     helloStopId,

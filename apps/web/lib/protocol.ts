@@ -73,6 +73,29 @@ export function parseBoardLine(raw: string): ParseResult {
   }
 }
 
+export interface LabelScore {
+  label: string;
+  value: number;
+}
+
+/**
+ * Scores from a "LOG,scores,<label>=<value>,..." line (firmware built with
+ * DEBUG_SCORES). Takes the LOG text; null if it isn't a well-formed scores line.
+ */
+export function parseScores(logText: string): LabelScore[] | null {
+  const [kind, ...pairs] = logText.split(",").map((part) => part.trim());
+  if (kind !== "scores" || pairs.length === 0) return null;
+
+  const scores: LabelScore[] = [];
+  for (const pair of pairs) {
+    const [label, raw, ...extra] = pair.split("=").map((part) => part.trim());
+    const value = Number(raw);
+    if (!label || !raw || extra.length > 0 || !Number.isFinite(value)) return null;
+    scores.push({ label, value });
+  }
+  return scores;
+}
+
 /** Serialise a kiosk command (without the trailing newline). */
 export function formatCommand(command: KioskCommand): string {
   switch (command.type) {

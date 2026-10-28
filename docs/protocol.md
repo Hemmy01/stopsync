@@ -19,12 +19,20 @@ In the sketch:
 ```cpp
 void setup() {
   Serial.begin(115200);
-  while (!Serial) {}
-  Serial.println("HELLO,STOP-01");
+  uint32_t start = millis();
+  while (!Serial && millis() - start < 2000) delay(10);  // never block forever
+}
+
+void loop() {
+  static bool wasOpen = false;
+  bool open = (bool)Serial;                 // true while a program holds the port (DTR)
+  if (open && !wasOpen) Serial.println("HELLO,STOP-01");  // every time the port opens
+  wasOpen = open;
 }
 ```
 
-Use `Serial.println(...)` so every message ends with a newline.
+Use `Serial.println(...)` so every message ends with a newline. Nothing else may be printed on this
+port: library debug output (e.g. Edge Impulse's `ei_printf`) must be redirected into `LOG,` lines.
 Lines longer than 512 characters are dropped.
 
 ## Board → kiosk
@@ -50,8 +58,20 @@ Examples:
 ```
 SELECT,KIM,voice,0.91
 SELECT,DTN,gesture,0.88
-LOG,voice=VOICE_OFF,gesture=GESTURE_RULE
+LOG,voice=model,gesture=rule,fw=0.2.0
 ```
+
+`LOG` lines the firmware sends:
+
+| Line | Meaning |
+|---|---|
+| `LOG,voice=model,gesture=rule,fw=0.2.0` | Sent right after `HELLO`: build modes (`model`/`off`, `model`/`rule`/`off`) and firmware version |
+| `LOG,scores,downtown=0.02,kimironko=0.01,...` | Every voice label's score, once per model window while listening (only with `DEBUG_SCORES 1`). The drawer shows them as bars. |
+| `LOG,voice_overrun` | The voice model fell behind the microphone (see firmware/README.md, Troubleshooting) |
+| `LOG,gesture=tap,ms=180,count=1` | Rule tap detector events (with `GESTURE_RULE_LOG 1`) |
+| `LOG,timeout=listening` · `LOG,timeout=wait_ack` | The board's safety timeouts fired |
+| `LOG,ignored=<line>` | The board received a line it doesn't understand |
+| `LOG,ei=<text>` | A message from the Edge Impulse SDK |
 
 ### Destination codes and how they are chosen
 
@@ -87,6 +107,10 @@ The mapping lives in `supabase/seed.sql`, `apps/web/lib/destinations.ts` and
 
 - Safety timeouts in case the kiosk goes quiet: **25 s** listening, **30 s** waiting for `ACK`.
 - After a `SELECT` the board stops listening until the next `START`.
+- Voice and gesture both run while listening; the first confident result is sent.
+- `HELLO` (followed by the modes `LOG`) is sent every time a program opens the port, so a kiosk
+  that connects late, or reconnects after an unplug, always sees it. The kiosk's status pill shows
+  **Connected** only after `HELLO` arrives.
 
 ## Typical session
 

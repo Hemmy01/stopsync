@@ -37,12 +37,13 @@ interface BoardBannersProps {
   supported: boolean;
   connection: SerialConnection;
   serialError: string | null;
+  noHello: boolean;
   mockMode: boolean;
   onReconnect: () => void;
 }
 
 /** Board problems, always with the reassurance that tapping a stop still works. */
-function BoardBanners({ supported, connection, serialError, mockMode, onReconnect }: BoardBannersProps) {
+function BoardBanners({ supported, connection, serialError, noHello, mockMode, onReconnect }: BoardBannersProps) {
   if (serialError) {
     return (
       <Banner tone="danger" title="Board not connected" className="mb-6">
@@ -67,6 +68,14 @@ function BoardBanners({ supported, connection, serialError, mockMode, onReconnec
         }
       >
         Voice and gesture are paused. It reconnects automatically when plugged back in; passengers can still tap a stop.
+      </Banner>
+    );
+  }
+  if (connection === "connected" && noHello) {
+    return (
+      <Banner tone="warn" title="The board isn't answering" className="mb-6">
+        The port is open but the board hasn&apos;t said hello. Unplug it and plug it back in, or upload the
+        kiosk firmware. Passengers can still tap a stop on screen.
       </Banner>
     );
   }
@@ -125,6 +134,7 @@ export function KioskApp() {
           supported={board.serialSupported}
           connection={board.connection}
           serialError={board.serialError}
+          noHello={board.noHello}
           mockMode={mockMode}
           onReconnect={() => void board.connect(true)}
         />
