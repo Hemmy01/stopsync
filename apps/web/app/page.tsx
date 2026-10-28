@@ -76,6 +76,10 @@ export default function HomePage() {
           <Link href="/about" className="font-semibold text-ink underline underline-offset-4">
             How it works
           </Link>
+          {" · "}
+          <Link href="/pitch" className="font-semibold text-ink underline underline-offset-4">
+            Pitch
+          </Link>
         </p>
       </footer>
     </main>

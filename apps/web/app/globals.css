@@ -143,3 +143,15 @@
     margin: 16mm;
   }
 }
+
+/* /pitch: subtle slide entrance (only applied under motion-safe). */
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
