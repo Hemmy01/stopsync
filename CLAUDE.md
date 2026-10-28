@@ -1,6 +1,6 @@
 # StopSync: Project Context
 
-This file is the source of truth for building StopSync's web app and database.
+This file is the source of truth for building StopSync's web app, database, firmware and ML.
 Read it fully before writing code. If anything here conflicts with a request in chat, ask.
 
 ---
@@ -11,8 +11,8 @@ StopSync is a smart bus stop prototype for Kigali, built by a 5-person team in t
 CMU-Africa Bridge Program. It is a digital waiting list for buses:
 
 1. A passenger **taps a card** at the bus stop kiosk.
-2. They choose their destination stop by **voice** or by a **hand gesture**
-   (recognised by ML models running on an Arduino Nano 33 BLE Sense).
+2. They choose their destination stop by **voice** or by a **tap gesture** over the
+   proximity sensor (recognised by ML models running on an Arduino Nano 33 BLE Sense Lite).
 3. They confirm on screen and get a **queue number** (e.g. `R3-014`).
 4. HQ sees live demand per destination on a **dashboard**, gets a
    "release a bus" recommendation, and approves it.
@@ -22,8 +22,8 @@ CMU-Africa Bridge Program. It is a digital waiting list for buses:
 Three jobs: **Sense** (count who is waiting) → **Decide** (when to send a bus) →
 **Inform** (tell passengers their number and ETA).
 
-I (Danny) own all web and database work. Teammates own the Arduino firmware and
-the two ML models (voice keyword spotting + gestures).
+I (Danny) own everything: web, database, Arduino firmware and the two ML models
+(voice keyword spotting + tap gestures, trained in Edge Impulse).
 
 ---
 
@@ -31,13 +31,13 @@ the two ML models (voice keyword spotting + gestures).
 
 | Part | Status in this demo |
 |---|---|
-| Voice / gesture destination choice | **Real**, sent by the board over USB serial |
+| Voice / tap-gesture destination choice | **Real**, two Edge Impulse models on the board, sent over USB serial. Until the models are exported, gestures use a rule-based detector (`GESTURE_RULE`) |
 | Card tap (RFID) | **Simulated** on the kiosk page (future: real RC522 reader) |
 | Kiosk screen | Real web page, Chrome on a laptop, board plugged in via USB |
 | Database, dispatch rules, dashboard | Real (Supabase) |
 | Bus location | A phone opening the `/bus` page and sharing GPS |
-| Bus arrival | Dashboard button, or the `/bus` page "I've arrived" button |
-| Other stops / network load | Optional simulator script (last phase) |
+| Bus arrival | Dashboard button, or the `/bus` page "I've arrived" button (no bus-detection model) |
+| Other stops / network load | Simulator script (`simulator/`, stops `STOP-02`…`STOP-06`) |
 
 The kiosk must be fully usable **without the board** (mock mode), so web work never
 waits on hardware.
@@ -46,18 +46,21 @@ waits on hardware.
 
 ## 3. Destinations (seed data)
 
-Four destination stops for the demo. Codes are what the board sends.
+Four destination stops for the demo (final). Codes are what the board sends.
 
-| code | name | route | route colour token |
-|---|---|---|---|
-| NYA | Nyabugogo | R1 | `--route-1` |
-| REM | Remera | R2 | `--route-2` |
-| KIM | Kimironko | R3 | `--route-3` |
-| DTN | Downtown | R4 | `--route-4` |
+| code | name | route | route colour token | voice label (say) | gesture label | gesture hint | board LED |
+|---|---|---|---|---|---|---|---|
+| REM | Remera | R2 | `--route-2` | `remera` | `one_tap` | Tap once | green |
+| DTN | Downtown | R4 | `--route-4` | `downtown` | `two_taps` | Tap twice | purple |
+| NYA | Nyabugogo | R1 | `--route-1` | `nyabugogo` | `three_taps` | Tap 3 times | blue |
+| KIM | Kimironko | R3 | `--route-3` | `kimironko` | `hold` | Hold your hand still | yellow |
 
-> Final four confirmed by the team (Downtown replaced Kacyiru).
-> Keep them only in seed data and one shared config, never hard-coded across components,
-> so changing them is a one-place edit.
+Non-selecting labels: voice `noise`, `unknown`; gesture `passing`, `idle`.
+They never select anything.
+
+> Keep the mapping only in: seed data (`destinations.voice_label/gesture_label/gesture_hint`),
+> `apps/web/lib/destinations.ts` and `firmware/kiosk_node/config.h`. A Vitest test checks
+> that config.h and destinations.ts agree.
 
 Kiosk location: `STOP-01`, name "Kiosk 1 (Demo)", lat -1.9441, lng 30.0619.
 
@@ -69,7 +72,7 @@ labels "Demo card 1"…"Demo card 5".
 ## 4. Architecture
 
 ```
-Arduino board ──USB serial──▶ Kiosk page (Chrome, Web Serial)
+Arduino board (Edge Impulse models) ──USB serial──▶ Kiosk page (Chrome, Web Serial)
                                    │
                                    ▼
                               Supabase (Postgres + Realtime + Cron)
@@ -95,6 +98,9 @@ Arduino board ──USB serial──▶ Kiosk page (Chrome, Web Serial)
 - Fonts via `next/font/google`
 - Web Serial API (Chrome/Edge only), `@types/w3c-web-serial` for types
 - Deploy target: **Vercel** (root directory `apps/web`)
+- Firmware: **arduino-cli**, FQBN `arduino:mbed_nano:nano33ble`, libraries `Arduino_APDS9960`
+  (+ PDM from the core); models as **Edge Impulse Arduino library** zips in `ml/exports/`
+- Data collection: **edge-impulse-cli** (`edge-impulse-data-forwarder`)
 
 Do not add other dependencies without telling me why first.
 No authentication in this prototype.
@@ -103,8 +109,7 @@ No authentication in this prototype.
 
 ## 6. Repository structure
 
-Monorepo. Only touch `apps/web/`, `supabase/`, `simulator/`, `docs/` and root files.
-Never edit `firmware/` or `ml/` (teammates own them).
+Monorepo. Every folder is in scope, including `firmware/` and `ml/`.
 
 ```
 stopsync/
@@ -122,14 +127,21 @@ stopsync/
 │   │   ├── serial.ts         Web Serial adapter + mock adapter
 │   │   ├── destinations.ts   Single source for display config (colours, order)
 │   │   └── eta.ts            ETA helper
+│   ├── content/models.json   Model status/accuracy shown on dashboard and /about
 │   └── tests/
 ├── supabase/
 │   ├── config.toml
 │   ├── migrations/
 │   └── seed.sql
-├── simulator/                Optional Node script (last phase)
-├── docs/protocol.md
-├── firmware/  ml/            NOT ours, do not edit
+├── simulator/                Node script: extra stops at peak/off-peak rates
+├── docs/                     protocol.md, architecture.md, demo-script.md, rehearsal-checklist.md
+├── firmware/
+│   ├── README.md             Build/upload, multi-model options, "When the models arrive"
+│   └── kiosk_node/           kiosk_node.ino, config.h, protocol, led, gestures, voice
+├── ml/
+│   ├── collect/tap_logger/   20 Hz "prox,clear" stream for edge-impulse-data-forwarder
+│   ├── exports/              Edge Impulse Arduino library zips
+│   └── results/              voice.md, gestures.md
 ├── .env.example
 └── README.md
 ```
@@ -150,19 +162,21 @@ allow choosing any port.
 | `STATE,LISTENING` | Board is listening for voice or gesture |
 | `STATE,IDLE` | Board stopped listening |
 | `SELECT,KIM,voice,0.91` | Passenger chose a destination: code, method (`voice` or `gesture`), confidence 0–1 |
+| `LOG,<text>` | Diagnostics only (e.g. `LOG,voice=VOICE_OFF,gesture=GESTURE_RULE`). Shown in the debug drawer, never acted on |
 
 **Kiosk → board**
 
 | Message | Meaning |
 |---|---|
-| `START` | Card tapped, start listening |
+| `START` | Card tapped, start listening. Also sent again when the passenger presses **Change** |
 | `ACK,R3-014` | Queue number created |
-| `CANCEL` | Passenger cancelled or timed out |
+| `CANCEL` | Passenger cancelled, timed out, or the card is already queued |
 
 Rules:
 - Ignore unknown or malformed lines (log them in the debug drawer, never crash).
 - Ignore `SELECT` when the kiosk is not in the listening step.
 - Accept `SELECT` only for known destination codes.
+- The board sends at most one `SELECT` per `START`.
 - Write `docs/protocol.md` from this section so teammates can follow it.
 
 ---
@@ -255,6 +269,18 @@ Seed `config` with:
 
 Seed 2 buses per destination (`R1-01`, `R1-02`, … `R4-02`), all `at_terminal`.
 
+### v2 additions (new migrations only; never edit applied ones)
+
+- `destinations`: columns `voice_label`, `gesture_label`, `gesture_hint` (filled from section 3).
+  Any destination outside the final four (the old placeholder) moves to `DTN`, then is deleted.
+- `selection_events (id, stop_id, destination, method voice|gesture|manual, confidence,
+  outcome confirmed|changed|cancelled|timeout, token_code, created_at)`: permissive RLS, Realtime.
+- `log_selection(p_stop, p_dest, p_method, p_conf, p_outcome, p_token)`: insert one event.
+- `reset_demo()`: delete tokens, decisions, bus events and selection events; all buses `at_terminal`.
+- View `model_insights_today` (`security_invoker = on`): per method, today in Kigali time:
+  selections, confirmed, changed, cancelled+timeout, confirmation rate, avg confidence.
+- Stops `STOP-02`…`STOP-06` (Kigali coordinates) for the simulator.
+
 ### Functions (all `security definer`, `set search_path = public`, granted to `anon`)
 
 1. **`create_token(p_stop text, p_dest text, p_card text, p_method text, p_conf numeric) returns jsonb`**
@@ -326,33 +352,39 @@ Main stage steps (a small state machine in one reducer):
 
 1. **Idle:** "Tap your card to begin". A card-reader target area; clicking it opens the
    5 demo cards (label it subtly: "Simulated RFID"). Choosing a card → step 2 and send `START`.
+   A small "How to choose your stop" sign shows the voice names and tap gestures.
 2. **Listening:** "Say your stop or show a gesture". Show the 4 destinations as large
    tiles (route badge + name) and a calm listening indicator. Tiles are clickable as a
-   fallback ("Tap a stop if I didn't catch it", method `manual`).
+   fallback ("Tap a stop if I didn't catch it", method `manual`). Each tile shows the route
+   badge, name, `Say "Remera"` and the gesture hint (`Tap once`).
    20-second timeout → send `CANCEL`, back to idle.
 3. **Confirm:** "Kimironko?" with a method chip, e.g. "Heard by voice · 91%" or
-   "Gesture · 88%". Buttons: **Confirm** / **Change** (back to listening).
+   "Gesture · 88%". Buttons: **Confirm** / **Change** (back to listening and send `START` again).
    15-second timeout → cancel.
 4. **Ticket:** the signature element (see design). Shows the code (`R3-014`), destination,
    position in queue, and a live status line that updates via Realtime
    ("Waiting for dispatch" → "Bus R3-07 is on the way · about 6 min" → "Your bus is here").
    Send `ACK,<code>` to the board. Auto-return to idle after 12 seconds.
-5. **Already queued:** "You're already in the queue" with the existing ticket code.
+5. **Already queued:** "You're already in the queue" with the existing ticket code; send `CANCEL`.
+
+Every selection outcome (confirmed, changed, cancelled, timeout) is recorded with `log_selection`.
 
 **Mock / debug mode** (`?mock=1` or press `D`): a drawer with the raw serial log and buttons
-that emit `HELLO`, `STATE,LISTENING`, and `SELECT,<code>,voice|gesture,<conf>` for every
-destination. Mock mode must exercise exactly the same code path as real serial.
+that emit `HELLO`, `STATE,LISTENING`, `STATE,IDLE`, `LOG,…` and
+`SELECT,<code>,voice|gesture,<conf>` for every destination. Mock mode must exercise exactly the same code path as real serial.
 
 ### `/dashboard` (HQ, desktop-first, works on a tablet)
 
 - **Header:** title, clock, totals (waiting now, boarded today, buses on the way),
-  "Recompute now" button (calls `run_dispatch`).
+  "Recompute now" button (calls `run_dispatch`), "Reset demo" (confirm dialog → `reset_demo`).
 - **Destination cards (grid of 4):** route badge + name; waiting count (large);
   oldest wait; load bar (% of capacity, turns amber ≥ 70%); bus status;
   the pending recommendation with its reason and **Approve** / **Dismiss**;
   **Bus arrived** (when on the way) and **Reset bus** (when arrived).
 - **How passengers chose (today):** a small horizontal stacked bar of
-  voice / gesture / rfid / manual. This shows the ML models in use.
+  voice / gesture / manual. This shows the ML models in use.
+- **Model insights (today):** from `model_insights_today` (selections, confirmation rate,
+  avg confidence per method) plus model status/accuracy from `apps/web/content/models.json`.
 - **Activity feed:** newest first, live: tokens created, decisions, approvals, arrivals.
 - **Settings:** edit the `config` values inline.
 
@@ -366,7 +398,14 @@ destination. Mock mode must exercise exactly the same code path as real serial.
 
 ### `/` (home)
 
-Minimal: project name, one-line description, three links (Kiosk, Dashboard, Bus).
+Minimal: project name, one-line description, three links (Kiosk, Dashboard, Bus) and a link to About.
+
+### `/about` (for judges, printable)
+
+Problem in one line; Sense → Decide → Inform; what runs where (board / browser / cloud);
+real vs simulated; both models (labels, status, accuracy from `models.json`); hardware;
+future upgrades (RC522 RFID + Tap&Go, camera module for finger gestures, LTE + solar kiosk,
+operator GPS).
 
 ---
 
@@ -421,13 +460,16 @@ tabular numbers everywhere times and counts appear.
 - Environment variables: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
   `NEXT_PUBLIC_STOP_ID=STOP-01`. Commit `.env.example` only.
 - **Never** commit `.env*` files, print secrets in logs, or put the service role key in the web app.
-- Tests (Vitest): protocol parser, ETA/haversine helper, kiosk reducer transitions.
-- Before every commit: `npm run lint`, typecheck, tests, and `npm run build` must pass.
+- Tests (Vitest): protocol parser (incl. `LOG`), ETA/haversine helper, kiosk reducer
+  transitions (incl. Change → `START`), config.h ↔ destinations.ts consistency.
+- Before every commit: `npm run lint`, typecheck, tests, and `npm run build` must pass;
+  firmware changes must also pass `arduino-cli compile` for every config that doesn't need the model zips.
+- Firmware: non-blocking loop, 115200 baud, line-based serial, build switches in `config.h`.
 
 **Git:**
 - Never commit directly to `main`. One branch per phase, e.g. `feat/db-schema`,
   `feat/web-foundation`, `feat/kiosk`, `feat/web-serial`, `feat/dashboard`, `feat/bus-page`.
-- Conventional Commits with scopes `web`, `db`, `docs`, `sim`, `chore`:
+- Conventional Commits with scopes `web`, `db`, `fw`, `ml`, `docs`, `sim`, `chore`:
   `feat(db): add create_token function`, `feat(web): add kiosk ticket screen`.
 - Small commits at each working step. Push the branch and open a PR when a phase is done
   (use `gh` if available, otherwise tell me).
@@ -474,9 +516,35 @@ done, and tell me anything I need to do.
   Vercel, demo script), `docs/protocol.md`.
 - ✅ A teammate can clone, add env values and run it from the README alone.
 
-**Optional Phase 8: Simulator**
-- `simulator/`: Node script that creates tokens for extra stops at peak/off-peak rates
-  (adds stops `STOP-02`…`STOP-06` via a migration only if I approve).
+**Phase 8: Simulator** → superseded by Phase H below.
+
+### v2 phases (models on the board)
+
+Goal: by the time the models are exported, board ↔ kiosk, firmware, deployment and testing
+are done, so plugging the models in takes minutes.
+
+- **A Audit:** repo vs every phase; tool check; report, then continue.
+- **B Core:** finish any incomplete work from phases 1–7.
+- **C Data:** destination labels, `selection_events`, `log_selection`, `reset_demo`,
+  `model_insights_today`; no trace of the old placeholder destination anywhere.
+- **D Kiosk + protocol:** `LOG`, Change → `START`, Already queued → `CANCEL`, tile hints,
+  idle "How to choose" sign, `log_selection` for every outcome, drawer `STATE,IDLE` + `LOG`.
+- **E Firmware** (`firmware/kiosk_node/`): switches `VOICE_MODE` (`VOICE_MODEL|VOICE_OFF`) and
+  `GESTURE_MODE` (`GESTURE_MODEL|GESTURE_RULE|GESTURE_OFF`); boot `HELLO,STOP-01` +
+  `LOG,voice=…,gesture=…`; states IDLE (LED off) → LISTENING (blue breathing) → WAIT_ACK
+  (route colour) → IDLE (green pulse on ACK); timeouts 25 s LISTENING, 30 s WAIT_ACK; one
+  SELECT per START; LED active LOW. Rule gestures: tap = near→away ≤ 600 ms, gap < 700 ms
+  groups taps, group closes after 900 ms quiet, hold = near ≥ 1.8 s, confidence 1.00.
+  Voice model: continuous mic, only while LISTENING, stop label ≥ 0.80 for 2 windows.
+  Gesture model: prox + clear at 20 Hz, 3 s ring buffer, classify every 250 ms, ≥ 0.80 twice.
+  `ml/collect/tap_logger/` streams `prox,clear` at 20 Hz. Ask before uploading.
+  Done when: real board + kiosk work with `GESTURE_RULE` (tap twice → "Downtown?" → ticket).
+- **F Model-drop checklist:** firmware/README "When the models arrive", `ml/results/*.md`,
+  `apps/web/content/models.json`.
+- **G Dashboard + About:** Reset demo, Model insights panel, `/about` page.
+- **H Simulator:** stops `STOP-02`…`STOP-06` + Node script (start/stop, speed).
+- **I Deploy + test:** Vercel, config.h consistency test, `docs/architecture.md` (Mermaid),
+  `docs/demo-script.md`, `docs/rehearsal-checklist.md`, README, full pass/fail run.
 
 ---
 
@@ -484,9 +552,9 @@ done, and tell me anything I need to do.
 
 - Supabase **project ref**, **database password**, **personal access token** (for the CLI)
 - Supabase **project URL** and **anon key** (for `.env.local`)
-- The final **four destination names** (if they change)
+- Edge Impulse model exports (Arduino library zips) into `ml/exports/`
+- The board on USB when firmware needs uploading (and the serial port closed elsewhere)
 - Later: Vercel access for deployment
 
-Ask before: resetting or dropping database objects, changing the schema in ways not
-described here, adding dependencies, or changing anything outside the folders listed in
-section 6.
+Ask before: installs, uploading firmware, deleting data outside `reset_demo`, resetting or
+dropping database objects, changing the schema in ways not described here, or adding dependencies.

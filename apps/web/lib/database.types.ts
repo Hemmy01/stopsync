@@ -122,23 +122,32 @@ export type Database = {
         Row: {
           bus_capacity: number
           code: string
+          gesture_hint: string | null
+          gesture_label: string | null
           name: string
           route: string
           sort_order: number
+          voice_label: string | null
         }
         Insert: {
           bus_capacity?: number
           code: string
+          gesture_hint?: string | null
+          gesture_label?: string | null
           name: string
           route: string
           sort_order?: number
+          voice_label?: string | null
         }
         Update: {
           bus_capacity?: number
           code?: string
+          gesture_hint?: string | null
+          gesture_label?: string | null
           name?: string
           route?: string
           sort_order?: number
+          voice_label?: string | null
         }
         Relationships: []
       }
@@ -243,6 +252,54 @@ export type Database = {
           },
         ]
       }
+      selection_events: {
+        Row: {
+          confidence: number | null
+          created_at: string
+          destination: string
+          id: number
+          method: string
+          outcome: string
+          stop_id: string
+          token_code: string | null
+        }
+        Insert: {
+          confidence?: number | null
+          created_at?: string
+          destination: string
+          id?: never
+          method: string
+          outcome: string
+          stop_id: string
+          token_code?: string | null
+        }
+        Update: {
+          confidence?: number | null
+          created_at?: string
+          destination?: string
+          id?: never
+          method?: string
+          outcome?: string
+          stop_id?: string
+          token_code?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "selection_events_destination_fkey"
+            columns: ["destination"]
+            isOneToOne: false
+            referencedRelation: "destinations"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "selection_events_stop_id_fkey"
+            columns: ["stop_id"]
+            isOneToOne: false
+            referencedRelation: "stops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stops: {
         Row: {
           id: string
@@ -266,7 +323,18 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      model_insights_today: {
+        Row: {
+          avg_confidence: number | null
+          cancelled_or_timeout: number | null
+          changed: number | null
+          confirmation_rate: number | null
+          confirmed: number | null
+          method: string | null
+          selections: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       approve_decision: { Args: { p_decision: number }; Returns: Json }
@@ -290,11 +358,23 @@ export type Database = {
         Returns: number
       }
       kiosk_stop_id: { Args: never; Returns: string }
+      log_selection: {
+        Args: {
+          p_conf: number
+          p_dest: string
+          p_method: string
+          p_outcome: string
+          p_stop: string
+          p_token?: string
+        }
+        Returns: Json
+      }
       mark_bus_arrived: {
         Args: { p_bus: string; p_source?: string }
         Returns: Json
       }
       reset_bus: { Args: { p_bus: string }; Returns: Json }
+      reset_demo: { Args: never; Returns: Json }
       run_dispatch: { Args: never; Returns: undefined }
       update_bus_location: {
         Args: { p_bus: string; p_lat: number; p_lng: number }

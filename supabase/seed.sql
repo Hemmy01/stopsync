@@ -6,13 +6,17 @@ insert into public.stops (id, name, lat, lng) values
 on conflict (id) do update
   set name = excluded.name, lat = excluded.lat, lng = excluded.lng;
 
-insert into public.destinations (code, name, route, sort_order) values
-  ('NYA', 'Nyabugogo', 'R1', 1),
-  ('REM', 'Remera',    'R2', 2),
-  ('KIM', 'Kimironko', 'R3', 3),
-  ('DTN', 'Downtown',  'R4', 4)
+-- voice_label / gesture_label / gesture_hint must match firmware/kiosk_node/config.h
+-- (a Vitest test checks this against apps/web/lib/destinations.ts).
+insert into public.destinations (code, name, route, sort_order, voice_label, gesture_label, gesture_hint) values
+  ('NYA', 'Nyabugogo', 'R1', 1, 'nyabugogo', 'three_taps', 'Tap 3 times'),
+  ('REM', 'Remera',    'R2', 2, 'remera',    'one_tap',    'Tap once'),
+  ('KIM', 'Kimironko', 'R3', 3, 'kimironko', 'hold',       'Hold your hand still'),
+  ('DTN', 'Downtown',  'R4', 4, 'downtown',  'two_taps',   'Tap twice')
 on conflict (code) do update
-  set name = excluded.name, route = excluded.route, sort_order = excluded.sort_order;
+  set name = excluded.name, route = excluded.route, sort_order = excluded.sort_order,
+      voice_label = excluded.voice_label, gesture_label = excluded.gesture_label,
+      gesture_hint = excluded.gesture_hint;
 
 insert into public.buses (id, destination) values
   ('R1-01', 'NYA'), ('R1-02', 'NYA'),
