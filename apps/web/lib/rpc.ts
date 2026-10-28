@@ -76,3 +76,47 @@ export async function findWaitingToken(
   if (error) throw new Error(error.message);
   return data;
 }
+
+/** Outcome of an action RPC: ok, or a message the screen can show. */
+export type ActionResult = { ok: true; data: JsonObject } | { ok: false; message: string };
+
+const FAILED_STATUSES = new Set(["error", "no_bus"]);
+
+export function parseActionResult(data: Json | null): ActionResult {
+  const o = asObject(data);
+  if (!o) return { ok: true, data: {} };
+  if (typeof o.status === "string" && FAILED_STATUSES.has(o.status)) {
+    return { ok: false, message: str(o, "message") ?? "Something went wrong" };
+  }
+  return { ok: true, data: o };
+}
+
+async function action(
+  call: PromiseLike<{ data: Json | null; error: { message: string } | null }>,
+): Promise<ActionResult> {
+  const { data, error } = await call;
+  if (error) return { ok: false, message: error.message };
+  return parseActionResult(data);
+}
+
+export const approveDecision = (c: StopSyncClient, id: number) => action(c.rpc("approve_decision", { p_decision: id }));
+export const dismissDecision = (c: StopSyncClient, id: number) => action(c.rpc("dismiss_decision", { p_decision: id }));
+export const resetBus = (c: StopSyncClient, busId: string) => action(c.rpc("reset_bus", { p_bus: busId }));
+
+export const markBusArrived = (c: StopSyncClient, busId: string, source: "dashboard" | "gps" | "manual") =>
+  action(c.rpc("mark_bus_arrived", { p_bus: busId, p_source: source }));
+
+export const updateBusLocation = (c: StopSyncClient, busId: string, lat: number, lng: number) =>
+  action(c.rpc("update_bus_location", { p_bus: busId, p_lat: lat, p_lng: lng }));
+
+export async function runDispatch(c: StopSyncClient): Promise<ActionResult> {
+  const { error } = await c.rpc("run_dispatch");
+  return error ? { ok: false, message: error.message } : { ok: true, data: {} };
+}
+
+export async function updateConfig(c: StopSyncClient, key: string, value: number): Promise<ActionResult> {
+  const { error } = await c.from("config").update({ value }).eq("key", key);
+  return error ? { ok: false, message: error.message } : { ok: true, data: {} };
+}
+
+export { num as jsonNumber, str as jsonString };
