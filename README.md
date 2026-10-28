@@ -49,8 +49,8 @@ Vitest · arduino-cli · Edge Impulse.
 You need **Node.js 20.9+** (21+ for the simulator) and **Chrome or Edge** (Web Serial only works there).
 
 ```zsh
-git clone https://github.com/Hemmy01/stopsync.git
-cd stopsync/apps/web
+git clone https://github.com/Hemmy01/tap-and-select.git
+cd tap-and-select/apps/web
 npm install
 cp ../.env.example .env.local     # fill the NEXT_PUBLIC_* lines; leave the SUPABASE_* (CLI) lines empty
 npm run dev                        # http://localhost:3000
@@ -204,7 +204,7 @@ Stop it with **Ctrl+C**; it prints how many tickets each stop got.
 
 ## Deploy to Vercel
 
-1. <https://vercel.com/new> → **Import** `Hemmy01/stopsync`.
+1. <https://vercel.com/new> → **Import** `Hemmy01/tap-and-select`.
 2. **Root Directory:** `apps/web` (framework preset Next.js, other settings default).
 3. **Environment Variables:** the three `NEXT_PUBLIC_*` values from `apps/web/.env.local`
    (Production and Preview).
