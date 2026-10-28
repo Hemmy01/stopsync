@@ -1,0 +1,14 @@
+{
+  "name": "@stopsync/simulator",
+  "private": true,
+  "type": "module",
+  "description": "Creates tickets at stops STOP-02…STOP-06 at peak/off-peak rates. No dependencies.",
+  "engines": { "node": ">=21" },
+  "scripts": {
+    "start": "node simulate.mjs run",
+    "peak": "node simulate.mjs run --profile peak",
+    "day": "node simulate.mjs run --speed 60",
+    "clear": "node simulate.mjs clear",
+    "test": "node --test"
+  }
+}

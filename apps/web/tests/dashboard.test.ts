@@ -177,3 +177,14 @@ describe("insightRows", () => {
     expect(rows[1]).toMatchObject({ selections: 0, confirmationRate: null, avgConfidence: null });
   });
 });
+
+describe("methodBreakdown and simulator tickets", () => {
+  it("leaves rfid (simulator) tickets out of the total", () => {
+    const dayStart = "2026-10-27T00:00:00.000Z";
+    const t = (method: string): Token =>
+      ({ id: 1, method, created_at: "2026-10-27T08:00:00.000Z", status: "waiting" }) as unknown as Token;
+    const { total, shares } = methodBreakdown([t("voice"), t("rfid"), t("rfid"), t("manual")], dayStart);
+    expect(total).toBe(2);
+    expect(shares.find((s) => s.method === "voice")?.pct).toBe(50);
+  });
+});
