@@ -1,5 +1,5 @@
 import type { InsightRow, Method } from "@/lib/dashboard";
-import { formatAccuracy, MODEL_STATUS_LABEL, MODELS, type ModelKey } from "@/lib/models";
+import { formatAccuracy, headlineAccuracy, MODEL_STATUS_LABEL, MODELS, type ModelKey } from "@/lib/models";
 
 const ROWS: { method: Method; label: string; model: ModelKey | null }[] = [
   { method: "voice", label: "Voice", model: "voice" },
@@ -30,8 +30,8 @@ export function ModelInsights({ rows }: { rows: InsightRow[] }) {
                 <span className="font-semibold">{label}</span>
                 {info ? (
                   <span className="text-right text-sm text-muted">
-                    {MODEL_STATUS_LABEL[info.status]} · test acc.{" "}
-                    <span className="num text-ink">{formatAccuracy(info.testAccuracy)}</span>
+                    {MODEL_STATUS_LABEL[info.status]} · {headlineAccuracy(info).kind === "test" ? "test" : "val."} acc.{" "}
+                    <span className="num text-ink">{formatAccuracy(headlineAccuracy(info).value)}</span>
                   </span>
                 ) : (
                   <span className="text-sm text-muted">Fallback, no model</span>

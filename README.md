@@ -97,7 +97,9 @@ arduino-cli upload  --fqbn arduino:mbed_nano:nano33ble -p /dev/cu.usbmodem1101 f
 firmware/scripts/compile-all.sh                          # every config that doesn't need model zips
 ```
 
-The default build is `VOICE_OFF` + `GESTURE_RULE`: taps work today without any model.
+The default build is `VOICE_MODEL` + `GESTURE_RULE`: the trained voice model plus rule-based taps.
+It needs the voice library installed once:
+`arduino-cli lib install --zip-path "ml/exports/ei-tap-and-select-voice-arduino-1.0.1-impulse-#1.zip"`.
 Then on `/kiosk`: **Connect board** → choose the Arduino (**Any port** lists every serial device).
 Close any Serial Monitor first: only one program can open the port. After the first time the kiosk
 reconnects by itself on reload and when the board is plugged back in.
@@ -112,17 +114,15 @@ reconnects by itself on reload and when the board is plugged back in.
 The mapping lives in `supabase/seed.sql`, `apps/web/lib/destinations.ts` and
 `firmware/kiosk_node/config.h`; `tests/firmware-config.test.ts` fails if config.h drifts.
 
-### Dropping in the Edge Impulse models
+### Edge Impulse models
 
-1. Export each project as an **Arduino library** into `ml/exports/`
-   (`stopsync_voice_inferencing.zip`, `stopsync_gestures_inferencing.zip`).
-2. `arduino-cli lib install --zip-path ml/exports/<zip>`
-3. In `config.h` set `VOICE_MODE VOICE_MODEL` (and/or `GESTURE_MODE GESTURE_MODEL`; both at once needs
-   the multi-impulse option).
-4. Compile, upload, test each stop 10 times, record results in `ml/results/`, update
-   `apps/web/content/models.json`.
+| Model | Status | Library |
+|---|---|---|
+| Voice | trained, in the default build | `tap-and-select-voice_inferencing` (`ml/exports/ei-tap-and-select-voice-*.zip`) |
+| Gestures | rule-based taps until exported | set `GESTURE_MODEL_HEADER` in `config.h` |
 
-Exact commands, label checks and threshold tuning: "When the models arrive" in `firmware/README.md`.
+Board test script, `DEBUG_SCORES` tuning and troubleshooting (port busy, wrong library, overrun):
+[`firmware/README.md`](firmware/README.md). Results go in `ml/results/` and `apps/web/content/models.json`.
 
 ---
 
