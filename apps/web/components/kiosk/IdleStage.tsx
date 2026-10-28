@@ -2,12 +2,48 @@
 
 import { Loader2, Nfc, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { RouteBadge } from "@/components/RouteBadge";
 import { DEMO_CARDS } from "@/lib/demo-cards";
+import { DESTINATIONS } from "@/lib/destinations";
 
 interface IdleStageProps {
   /** True while the tapped card is being checked. */
   reading: boolean;
   onTap: (cardId: string) => void;
+}
+
+/** Small sign: the voice name and tap gesture for each stop. */
+function HowToChoose() {
+  return (
+    <section aria-labelledby="how-to-choose" className="mt-8 max-w-xl rounded-card border border-line bg-surface">
+      <h2 id="how-to-choose" className="border-b border-line px-5 py-3 text-base font-semibold uppercase tracking-[0.12em] text-muted">
+        How to choose your stop
+      </h2>
+      <table className="w-full text-lg">
+        <thead className="sr-only">
+          <tr>
+            <th>Stop</th>
+            <th>Say</th>
+            <th>Or over the sensor</th>
+          </tr>
+        </thead>
+        <tbody>
+          {DESTINATIONS.map((d) => (
+            <tr key={d.code} className="border-b border-line last:border-b-0">
+              <td className="py-2 pl-5">
+                <span className="flex items-center gap-3">
+                  <RouteBadge code={d.code} size="sm" />
+                  <span className="font-semibold">{d.name}</span>
+                </span>
+              </td>
+              <td className="py-2 text-muted">Say &ldquo;{d.name}&rdquo;</td>
+              <td className="py-2 pr-5 text-muted">{d.gestureHint}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
+  );
 }
 
 /** Step 1: "Tap your card to begin", with a simulated card reader. */
@@ -29,6 +65,7 @@ export function IdleStage({ reading, onTap }: IdleStageProps) {
         <p className="mt-5 max-w-lg text-[22px] text-muted">
           Then say your stop or show a gesture. You&rsquo;ll get a queue number and live bus times.
         </p>
+        <HowToChoose />
       </div>
 
       <div className="relative">

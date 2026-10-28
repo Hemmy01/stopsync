@@ -31,6 +31,15 @@ describe("parseBoardLine", () => {
     });
   });
 
+  it("parses LOG with free-form text, commas included", () => {
+    expect(parseBoardLine("LOG,voice=VOICE_OFF,gesture=GESTURE_RULE")).toEqual({
+      ok: true,
+      message: { type: "LOG", text: "voice=VOICE_OFF,gesture=GESTURE_RULE" },
+    });
+    expect(parseBoardLine("LOG")).toEqual({ ok: true, message: { type: "LOG", text: "" } });
+    expect(parseBoardLine("LOGGING,x").ok).toBe(false);
+  });
+
   it("tolerates CRLF, surrounding whitespace and method case", () => {
     expect(parseBoardLine("  SELECT, NYA ,Voice,1\r\n")).toEqual({
       ok: true,

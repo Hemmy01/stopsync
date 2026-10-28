@@ -71,6 +71,10 @@ export function useBoard({ mockMode, onMessage }: { mockMode: boolean; onMessage
         return;
       }
       const { message } = result;
+      if (message.type === "LOG") {
+        append({ direction: "in", text, note: "Diagnostics" });
+        return;
+      }
       if (message.type === "HELLO") setHelloStopId(message.stopId);
       if (message.type === "STATE") setBoardState(message.state);
       const ignored = onMessageRef.current(message);
