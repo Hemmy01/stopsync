@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// StopSync network simulator: passengers arriving at stops STOP-02…STOP-06.
+// Tap&Select network simulator: passengers arriving at stops STOP-02…STOP-06.
 //
 //   node simulator/simulate.mjs [run] [--speed 1] [--profile auto|peak|offpeak]
 //                               [--minutes N] [--stops STOP-02,STOP-03] [--dry-run]
@@ -18,7 +18,7 @@ import { expectedArrivals, parseArgs, pick, poisson, profileAt } from "./model.m
 const SIM_STOPS = ["STOP-02", "STOP-03", "STOP-04", "STOP-05", "STOP-06"];
 const TICK_SECONDS = 1;
 
-const HELP = `StopSync simulator
+const HELP = `Tap&Select simulator
 
   node simulator/simulate.mjs [run] [options]   start creating tickets (Ctrl+C to stop)
   node simulator/simulate.mjs clear             expire the simulator's waiting tickets

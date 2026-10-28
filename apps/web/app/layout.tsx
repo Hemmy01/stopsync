@@ -22,7 +22,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "StopSync",
+  title: "Tap&Select",
   description: "A digital waiting list for Kigali's buses.",
 };
 

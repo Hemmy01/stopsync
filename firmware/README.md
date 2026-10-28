@@ -1,4 +1,4 @@
-# StopSync firmware (`kiosk_node`)
+# Tap&Select firmware (`kiosk_node`)
 
 Runs on the **Arduino Nano 33 BLE Sense Lite** plugged into the kiosk laptop by USB.
 After the kiosk sends `START`, the board listens for a **voice keyword** or a **tap gesture**

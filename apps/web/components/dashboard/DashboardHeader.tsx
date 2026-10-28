@@ -31,7 +31,7 @@ export function DashboardHeader({ totals, onRecompute, recomputing, onResetDemo,
   return (
     <header className="border-b border-line bg-paper">
       <div className="mx-auto flex max-w-[1440px] flex-wrap items-center gap-x-8 gap-y-4 px-4 py-4 sm:px-8">
-        <Link href="/" aria-label="StopSync home">
+        <Link href="/" aria-label="Tap&Select home">
           <Wordmark />
         </Link>
         <h1 className="text-[28px]">HQ Dashboard</h1>

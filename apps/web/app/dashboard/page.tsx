@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { DashboardApp } from "@/components/dashboard/DashboardApp";
 
 export const metadata: Metadata = {
-  title: "HQ Dashboard · StopSync",
+  title: "HQ Dashboard · Tap&Select",
 };
 
 export default function DashboardPage() {

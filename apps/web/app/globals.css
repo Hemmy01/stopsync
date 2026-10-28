@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* StopSync design tokens: the only place colours, fonts and radii are defined.
+/* Tap&Select design tokens: the only place colours, fonts and radii are defined.
    Concept: "Kigali departure board". See CLAUDE.md section 10. */
 :root {
   --paper: #f5f3ee;
