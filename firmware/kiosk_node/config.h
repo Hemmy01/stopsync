@@ -15,7 +15,7 @@
 #define GESTURE_MODEL 2
 
 #ifndef VOICE_MODE
-#define VOICE_MODE   VOICE_OFF      // VOICE_MODEL | VOICE_OFF
+#define VOICE_MODE   VOICE_MODEL    // VOICE_MODEL | VOICE_OFF
 #endif
 #ifndef GESTURE_MODE
 #define GESTURE_MODE GESTURE_RULE   // GESTURE_MODEL | GESTURE_RULE | GESTURE_OFF
@@ -31,7 +31,7 @@
 // Edge Impulse library headers: the only place their names appear.
 // The header is "<project name>_inferencing.h" from the exported zip.
 #ifndef VOICE_MODEL_HEADER
-#define VOICE_MODEL_HEADER   <stopsync_voice_inferencing.h>
+#define VOICE_MODEL_HEADER   <tap-and-select-voice_inferencing.h>  // ml/exports, project 1150179
 #endif
 #ifndef GESTURE_MODEL_HEADER
 #define GESTURE_MODEL_HEADER <stopsync_gestures_inferencing.h>
@@ -54,6 +54,8 @@ or GESTURE_RULE with the voice model, or two builds. See firmware/README.md."
 // ---------------------------------------------------------------------------
 #define STOP_ID   "STOP-01"
 #define BAUD_RATE 115200
+#define FW_VERSION "0.2.0"           // reported on connect: LOG,voice=…,gesture=…,fw=<version>
+#define SERIAL_WAIT_MS 2000          // boot waits at most this long for a host, then runs anyway
 
 // ---------------------------------------------------------------------------
 // Destinations: must match apps/web/lib/destinations.ts and supabase/seed.sql
@@ -108,7 +110,17 @@ static inline int destinationForGestureLabel(const char* label) {
 // Models
 // ---------------------------------------------------------------------------
 #define VOICE_THRESHOLD      0.80f  // stop label score needed...
-#define VOICE_CONSECUTIVE    2      // ...for this many windows in a row
+#define VOICE_CONSECUTIVE    2      // ...for this many results in a row
+// Results per 1 s model window (Edge Impulse continuous mode): 4 = one result every
+// 250 ms, as in the reference example. Use 3 if the board logs voice_overrun.
+#ifndef VOICE_SLICES_PER_WINDOW
+#define VOICE_SLICES_PER_WINDOW 4
+#endif
+// 1 = send "LOG,scores,<label>=<value>,..." once per model window (~1 s) while
+// listening, for tuning VOICE_THRESHOLD from the kiosk debug drawer.
+#ifndef DEBUG_SCORES
+#define DEBUG_SCORES         0
+#endif
 #define GESTURE_THRESHOLD    0.80f
 #define GESTURE_CONSECUTIVE  2
 #define GESTURE_SAMPLE_HZ    20     // prox + clear frames per second (tap_logger uses the same)

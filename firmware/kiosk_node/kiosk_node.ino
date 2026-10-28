@@ -6,6 +6,8 @@
 //   LISTENING --confident result--> SELECT --> WAIT_ACK (route colour)
 //   WAIT_ACK --ACK--> IDLE (green pulse) · --START--> LISTENING · --CANCEL--> IDLE
 //   Safety timeouts: 25 s LISTENING, 30 s WAIT_ACK. One SELECT per START.
+//   Voice and taps both run while LISTENING; the first confident result wins.
+//   The microphone runs from boot; the voice model only classifies while LISTENING.
 
 #include "config.h"
 #include "gestures.h"
@@ -14,17 +16,17 @@
 #include "voice.h"
 
 #if VOICE_MODE == VOICE_MODEL
-#define VOICE_MODE_NAME "VOICE_MODEL"
+#define VOICE_MODE_NAME "model"
 #else
-#define VOICE_MODE_NAME "VOICE_OFF"
+#define VOICE_MODE_NAME "off"
 #endif
 
 #if GESTURE_MODE == GESTURE_MODEL
-#define GESTURE_MODE_NAME "GESTURE_MODEL"
+#define GESTURE_MODE_NAME "model"
 #elif GESTURE_MODE == GESTURE_RULE
-#define GESTURE_MODE_NAME "GESTURE_RULE"
+#define GESTURE_MODE_NAME "rule"
 #else
-#define GESTURE_MODE_NAME "GESTURE_OFF"
+#define GESTURE_MODE_NAME "off"
 #endif
 
 enum class State { Idle, Listening, WaitAck };
@@ -38,7 +40,7 @@ static const char* gestureError = nullptr;
 
 static void announce() {
   sendHello();
-  sendLog("voice=%s,gesture=%s", VOICE_MODE_NAME, GESTURE_MODE_NAME);
+  sendLog("voice=%s,gesture=%s,fw=%s", VOICE_MODE_NAME, GESTURE_MODE_NAME, FW_VERSION);
   if (voiceError) sendLog("%s", voiceError);
   if (gestureError) sendLog("%s", gestureError);
 }

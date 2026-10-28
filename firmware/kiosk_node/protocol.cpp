@@ -12,7 +12,10 @@ static bool wasConnected = false;
 
 void protocolBegin() {
   Serial.begin(BAUD_RATE);
-  // No while (!Serial): the board must run without a host attached.
+  // Give an already-open host a moment, but never block: the board must run
+  // without one, and loop() sends HELLO whenever a port opens later.
+  uint32_t start = millis();
+  while (!Serial && millis() - start < SERIAL_WAIT_MS) delay(10);
 }
 
 bool protocolConnected() { return (bool)Serial; }
@@ -83,7 +86,7 @@ void sendSelect(const char* code, const char* method, float confidence) {
 }
 
 void sendLog(const char* fmt, ...) {
-  char text[96];
+  char text[160];
   va_list args;
   va_start(args, fmt);
   vsnprintf(text, sizeof(text), fmt, args);

@@ -12,9 +12,9 @@ Protocol: [`docs/protocol.md`](../docs/protocol.md).
 | `kiosk_node/protocol.*` | Non-blocking line reader (`START`, `ACK,<code>`, `CANCEL`) and senders |
 | `kiosk_node/led.*` | Non-blocking RGB LED patterns (active LOW) |
 | `kiosk_node/gestures.*` | APDS9960 proximity: rule-based taps (`GESTURE_RULE`) or the model's 20 Hz window (`GESTURE_MODEL`) |
-| `kiosk_node/voice.*` | PDM microphone double buffer + consecutive-window rule (`VOICE_MODEL`) |
-| `kiosk_node/models.*` | The only file that includes an Edge Impulse header (its globals must live in one `.cpp`) |
-| `scripts/compile-all.sh` | Compiles every config that doesn't need the model zips, prints flash/RAM |
+| `kiosk_node/voice.*` | PDM microphone double buffer + consecutive-result rule (`VOICE_MODEL`) |
+| `kiosk_node/models.*` | The only file that includes an Edge Impulse header (its globals must live in one `.cpp`); also keeps the SDK's `ei_printf` off the serial line |
+| `scripts/compile-all.sh` | Compiles every config (model builds once their library is installed), prints flash/RAM |
 
 ## Behaviour
 
@@ -24,23 +24,27 @@ Protocol: [`docs/protocol.md`](../docs/protocol.md).
 | LISTENING | blue, breathing | confident result → sends `SELECT` + `STATE,IDLE` → WAIT_ACK · `CANCEL`/`ACK` → IDLE · 25 s → IDLE |
 | WAIT_ACK | route colour (REM green, DTN purple, NYA blue, KIM yellow) | `ACK` → green pulse → IDLE · `START` → LISTENING · `CANCEL` → IDLE · 30 s → IDLE |
 
-- When a program opens the port the board sends `HELLO,STOP-01` and `LOG,voice=<mode>,gesture=<mode>`
-  (plus a `LOG` line for any sensor that failed to start).
+- When a program opens the port the board sends exactly `HELLO,STOP-01` then
+  `LOG,voice=model,gesture=rule,fw=0.2.0` (modes `model|off` and `model|rule|off`), plus a `LOG`
+  line for any sensor that failed to start. At boot it waits at most `SERIAL_WAIT_MS` (2 s) for a host.
+- Voice and taps both run while LISTENING; whichever is confident first wins.
+- Nothing but protocol lines reaches the serial port: Edge Impulse SDK messages (`ei_printf`) are
+  turned into `LOG,ei=<text>`.
 - If the port closes while listening, the board goes idle.
 - Unknown lines are answered with `LOG,ignored=<line>`.
 
 ## Build switches (`config.h`)
 
 ```cpp
-#define VOICE_MODE   VOICE_OFF      // VOICE_MODEL | VOICE_OFF
+#define VOICE_MODE   VOICE_MODEL    // VOICE_MODEL | VOICE_OFF
 #define GESTURE_MODE GESTURE_RULE   // GESTURE_MODEL | GESTURE_RULE | GESTURE_OFF
 #define EI_LAYOUT    EI_SEPARATE    // EI_SEPARATE | EI_MULTI_IMPULSE
 ```
 
 | Voice | Gesture | Needs |
 |---|---|---|
-| `VOICE_OFF` | `GESTURE_RULE` | nothing (default, works today) |
-| `VOICE_MODEL` | `GESTURE_RULE` | voice zip |
+| `VOICE_MODEL` | `GESTURE_RULE` | voice library (**default**, the demo build) |
+| `VOICE_OFF` | `GESTURE_RULE` | nothing (taps only) |
 | `VOICE_OFF` | `GESTURE_MODEL` | gesture zip |
 | `VOICE_MODEL` | `GESTURE_MODEL` | a merged multi-impulse library (`EI_LAYOUT EI_MULTI_IMPULSE`), see option 1 |
 
@@ -53,7 +57,13 @@ Protocol: [`docs/protocol.md`](../docs/protocol.md).
 arduino-cli core install arduino:mbed_nano       # Nano 33 BLE core (PDM comes with it)
 arduino-cli lib install Arduino_APDS9960          # proximity sensor
 arduino-cli config set library.enable_unsafe_install true   # allows installing Edge Impulse zips
+arduino-cli lib install --zip-path "ml/exports/ei-tap-and-select-voice-arduino-1.0.1-impulse-#1.zip"
+arduino-cli lib list | grep inferencing   # expect tap-and-select-voice_inferencing 1.0.1
 ```
+
+Only `tap-and-select-voice_inferencing` is used. If an older Edge Impulse library such as
+`Voice_recognition_inferencing` (the faucet test project) is installed, remove it so it can't be
+picked by mistake: `arduino-cli lib uninstall Voice_recognition_inferencing`.
 
 ## Build and upload
 
@@ -69,6 +79,31 @@ only one program can open the port. If an upload can't find the board, double-ta
 button (the orange LED pulses) and upload again.
 
 Check every config: `firmware/scripts/compile-all.sh`.
+
+## Voice model (`VOICE_MODEL`)
+
+| | |
+|---|---|
+| Library | `tap-and-select-voice_inferencing` 1.0.1 (Edge Impulse project 1150179), header `<tap-and-select-voice_inferencing.h>` |
+| Labels | `downtown`, `kimironko`, `noise`, `nyabugogo`, `remera`, `unknown` |
+| Input | 1000 ms window at 16 kHz, MFCC, int8 + EON; ~419 ms DSP + NN per window, 20.4 KB RAM, 31.3 KB flash (Edge Impulse estimate) |
+
+Based on Edge Impulse's `nano_ble33_sense_microphone_continuous` example (PDM at 16 kHz, gain 127,
+`run_classifier_continuous`, 4 slices per window = one result every 250 ms), changed so it never blocks:
+
+- The microphone runs from boot. `loop()` checks for a full slice each pass instead of waiting
+  for it, so serial commands, taps and the LED keep running.
+- The classifier runs only while LISTENING. Entering LISTENING resets the continuous classifier
+  (`run_classifier_init`) and the streak.
+- A stop label at or above `VOICE_THRESHOLD` (0.80) for `VOICE_CONSECUTIVE` (2) results in a row
+  sends `SELECT,<code>,voice,<confidence>`. `noise`, `unknown` and low scores reset the streak.
+- If classifying a slice takes longer than recording one, the board sends `LOG,voice_overrun`
+  (once per listening session). Fix: `VOICE_SLICES_PER_WINDOW 3` in `config.h` (see Troubleshooting).
+
+**Tuning with `DEBUG_SCORES`.** Set `#define DEBUG_SCORES 1` in `config.h` (or add
+`-DDEBUG_SCORES=1` to the compile flags) and the board sends every label's score once per window
+while listening, e.g. `LOG,scores,downtown=0.02,kimironko=0.01,noise=0.03,nyabugogo=0.00,remera=0.93,unknown=0.01`.
+The kiosk debug drawer (press **D**) shows these as small bars. Turn it off again for the demo.
 
 ## Tuning the tap detector (`GESTURE_RULE`)
 
@@ -177,6 +212,8 @@ Name the axes `prox,clear`. Record 3 s samples labelled `one_tap`, `two_taps`, `
 ## When the models arrive
 
 Target: from zip to working kiosk in a few minutes. Do this with the kiosk tab closed.
+**Voice: done** (`tap-and-select-voice_inferencing`, see "Voice model" above). These steps are now for the
+gesture model and for re-exports.
 
 ### 1. Put the zips in place
 
@@ -184,8 +221,8 @@ Name the Edge Impulse projects (or rename the libraries) so the exports are:
 
 | Model | Zip in `ml/exports/` | Library / header |
 |---|---|---|
-| Voice | `stopsync_voice_inferencing.zip` | `stopsync_voice_inferencing.h` |
-| Gestures | `stopsync_gestures_inferencing.zip` | `stopsync_gestures_inferencing.h` |
+| Voice | `ei-tap-and-select-voice-arduino-1.0.1-impulse-#1.zip` | `tap-and-select-voice_inferencing.h` (set in `config.h`) |
+| Gestures | `stopsync_gestures_inferencing.zip` (or the Edge Impulse name) | `stopsync_gestures_inferencing.h` |
 
 If a project has another name, keep it and change `VOICE_MODEL_HEADER` / `GESTURE_MODEL_HEADER`
 in `config.h` instead (the header is `src/<name>_inferencing.h` inside the zip):
@@ -234,7 +271,7 @@ arduino-cli upload  --fqbn arduino:mbed_nano:nano33ble -p /dev/cu.usbmodem1101 f
 arduino-cli monitor -p /dev/cu.usbmodem1101 -c baudrate=115200
 ```
 
-The first lines must read `HELLO,STOP-01` and `LOG,voice=VOICE_MODEL,gesture=...` with no error `LOG`.
+The first lines must read `HELLO,STOP-01` and `LOG,voice=model,gesture=...,fw=...` with no error `LOG`.
 Type `START` and say a stop: expect `SELECT,REM,voice,0.9x` then `STATE,IDLE`. Close the monitor.
 
 ### 6. Test each stop 10 times on the board
@@ -264,3 +301,29 @@ Record the results in `ml/results/voice.md` and `ml/results/gestures.md`, then u
 The confidence in every `SELECT` is shown on the kiosk confirm screen and stored in
 `selection_events`; the dashboard's Model insights shows average confidence and how often
 passengers press Change per method.
+
+## Testing the voice build with the kiosk
+
+1. Close everything that uses the port (Serial Monitor, `arduino-cli monitor`, other kiosk tabs), then upload:
+   `arduino-cli upload --fqbn arduino:mbed_nano:nano33ble -p /dev/cu.usbmodem1101 firmware/kiosk_node`
+2. Open `/kiosk` (`http://localhost:3000/kiosk` or the Vercel `https://` URL; Web Serial needs one of the two)
+   in Chrome or Edge, click **Connect board**, choose the Arduino.
+3. Press **D**: the drawer shows `HELLO,STOP-01` and `LOG,voice=model,gesture=rule,fw=0.2.0`; the pill says **Connected**.
+4. Tap a demo card → LED blue breathing → say "Remera" from 30–50 cm → *Remera?* · *Heard by voice · 9x%*
+   → **Confirm** → ticket → LED green pulse.
+5. Repeat for Nyabugogo, Kimironko, Downtown. Then say other words, and stay silent for 20 s:
+   nothing may be selected.
+6. Tap twice over the sensor → *Downtown?* · *Gesture · 100%*.
+7. Unplug and replug the board: the kiosk reconnects by itself and the pill returns to **Connected**.
+
+## Troubleshooting
+
+| Problem | Fix |
+|---|---|
+| Upload or **Connect board** says the port is busy | Close the Serial Monitor, `arduino-cli monitor` and other kiosk tabs (only one program can open the port), then retry. Upload still failing: double-tap reset (orange LED pulses). |
+| `fatal error: tap-and-select-voice_inferencing.h: No such file` | Install the zip (One-time setup). Check with `arduino-cli lib list \| grep inferencing`. |
+| Wrong labels / faucet model behaviour | An old library is being used. `arduino-cli lib uninstall Voice_recognition_inferencing`; check `VOICE_MODEL_HEADER` in `config.h`. The compile output's "Used library" lines show which one was linked. |
+| `LOG,voice_overrun` | Classifying a slice took longer than recording it (250 ms). Set `VOICE_SLICES_PER_WINDOW 3` in `config.h` (one result every ~333 ms), recompile, retest. It overrides the library's `EI_CLASSIFIER_SLICES_PER_MODEL_WINDOW`; the library itself stays untouched. |
+| Pill stays **Not connected** after choosing the port | The board didn't send `HELLO`: replug it, or re-upload; check the drawer for any line at all. |
+| `LOG,ei=...` lines | Messages from the Edge Impulse SDK (normally only on errors), passed through as diagnostics. |
+| Voice never selects | Turn on `DEBUG_SCORES` and watch the scores while speaking; lower `VOICE_THRESHOLD` or set `VOICE_CONSECUTIVE 1` (step 7 above). |
