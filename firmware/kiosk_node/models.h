@@ -16,6 +16,11 @@ uint32_t voiceModelFrequency();   // Hz
 void voiceModelReset();           // reset continuous state (call when listening starts)
 // Classify one slice of 16-bit audio; false on SDK error.
 bool voiceModelClassifySlice(const int16_t* slice, ModelScore& best);
+uint32_t voiceModelSlicesPerWindow();  // results per full model window
+// Every label's score from the latest voice result (DEBUG_SCORES).
+uint16_t voiceModelLabelCount();
+const char* voiceModelLabel(uint16_t i);
+float voiceModelScore(uint16_t i);
 
 // Gesture impulse. Only available with GESTURE_MODE == GESTURE_MODEL.
 uint32_t gestureModelFeatureCount();  // must equal GESTURE_WINDOW_FRAMES * GESTURE_AXES
