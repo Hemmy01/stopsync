@@ -1,9 +1,16 @@
 # Edge Impulse exports
 
-Put the **Arduino library** zips from Edge Impulse (Deployment → Arduino library) here:
+**Arduino library** zips from Edge Impulse (Deployment → Arduino library).
 
-- `stopsync_voice_inferencing.zip`: voice keywords (remera, nyabugogo, kimironko, downtown, noise, unknown)
-- `stopsync_gestures_inferencing.zip`: taps over the proximity sensor (one_tap, two_taps, three_taps, hold, passing, idle)
-- `stopsync_multi_inferencing.zip`: optional merged library (firmware/README.md, option 1)
+| File | Library / header | Labels |
+|---|---|---|
+| `ei-tap-and-select-voice-arduino-1.0.1-impulse-#1.zip` | `tap-and-select-voice_inferencing` · `<tap-and-select-voice_inferencing.h>` (project 1150179, deploy v1) | downtown, kimironko, noise, nyabugogo, remera, unknown |
+| gesture model (later) | set `GESTURE_MODEL_HEADER` in `firmware/kiosk_node/config.h` | one_tap, two_taps, three_taps, hold, passing, idle |
 
-Install and switch on: see "When the models arrive" in `firmware/README.md`.
+Install (quote the path, it contains `#`):
+
+```zsh
+arduino-cli lib install --zip-path "ml/exports/ei-tap-and-select-voice-arduino-1.0.1-impulse-#1.zip"
+```
+
+Switch on and test: see "When the models arrive" in `firmware/README.md`.
