@@ -21,7 +21,7 @@ import { TicketStage } from "./TicketStage";
 const noopSubscribe = () => () => {};
 
 /** ?mock=1 in the URL. False during server render. */
-function useUrlFlag(name: "mock" | "test"): boolean {
+function useUrlFlag(name: "mock"): boolean {
   return useSyncExternalStore(
     noopSubscribe,
     () => new URLSearchParams(window.location.search).get(name) === "1",
@@ -91,8 +91,6 @@ function BoardBanners({ supported, connection, serialError, noHello, mockMode, o
 
 export function KioskApp() {
   const mockParam = useUrlFlag("mock");
-  // ?test=1: offer the "new passenger every tap" test card with the drawer closed.
-  const testParam = useUrlFlag("test");
   // null = follow the URL; true/false once toggled with D.
   const [drawerToggle, setDrawerToggle] = useState<boolean | null>(null);
   const drawerOpen = drawerToggle ?? mockParam;
@@ -149,7 +147,7 @@ export function KioskApp() {
 
         <div className="min-h-0 flex-1">
           {(state.step === "idle" || state.step === "checking") && (
-            <IdleStage reading={state.step === "checking"} testCard={drawerOpen || testParam} onTap={tapCard} />
+            <IdleStage reading={state.step === "checking"} onTap={tapCard} />
           )}
 
           {state.step === "listening" && <ListeningStage onSelect={selectManually} onCancel={cancel} />}
