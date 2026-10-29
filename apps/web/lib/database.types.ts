@@ -609,6 +609,7 @@ export type Database = {
       }
       is_trusted_caller: { Args: never; Returns: boolean }
       kiosk_stop_id: { Args: never; Returns: string }
+      live_board: { Args: never; Returns: Json }
       log_selection: {
         Args: {
           p_conf: number

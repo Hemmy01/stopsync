@@ -23,18 +23,19 @@ update buses set status = 'at_terminal', occupancy = 0, released_at = null, depa
 delete from dispatch_decisions where status = 'pending';
 update config set value = 0 where key = 'auto_dispatch';
 
--- Tickets T0…T5 at the kiosk: T0 created last (highest id) but stamped oldest.
+-- Tickets T0…T5 at the kiosk: T0 created last (highest id) but stamped oldest. Seconds, not
+-- minutes, so the tickets never fall into yesterday (codes restart at Kigali midnight).
 create temp table t (name text primary key, code text);
 do $$
 declare i int;
 begin
   for i in 1..5 loop
     insert into t values ('T' || i, create_token('STOP-01', 'DTN', 'FIFO-' || i, 'gesture', 1)->>'code');
-    update queue_tokens set created_at = now() - make_interval(mins => 30 - i)
+    update queue_tokens set created_at = now() - make_interval(secs => 30 - i)
      where code = (select code from t where name = 'T' || i) and status = 'waiting';
   end loop;
   insert into t values ('T0', create_token('STOP-01', 'DTN', 'FIFO-0', 'voice', 0.9)->>'code');
-  update queue_tokens set created_at = now() - interval '45 minutes'
+  update queue_tokens set created_at = now() - interval '45 seconds'
    where code = (select code from t where name = 'T0') and status = 'waiting';
 end $$;
 
