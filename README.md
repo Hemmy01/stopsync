@@ -137,10 +137,12 @@ Everything in the database comes from `supabase/migrations/` and `supabase/seed.
 
 | Table / view | Holds |
 |---|---|
-| `stops` | The kiosk (`STOP-01`) and simulator stops `STOP-02`…`STOP-06` |
+| `stops` | The kiosk (`STOP-01`), the route terminals `STOP-02`…`STOP-06` and stops along the routes `STOP-07`…`STOP-17` |
+| `routes_stops` · `terminals` | Each route's stops in order with distance from its terminal · terminal location and departure radius (150 m) |
 | `destinations` | NYA Nyabugogo R1 · REM Remera R2 · KIM Kimironko R3 · DTN Downtown R4, with voice/gesture labels |
 | `queue_tokens` | Queue numbers and their status (`waiting` / `boarded` / `expired`) |
-| `buses` · `bus_events` | 2 buses per route (status, GPS, ETA) · released / arrived / reset history |
+| `buses` · `bus_events` | 2 buses per route (status, GPS, ETA, last/next stop, stops and distance left) · released / departed / arrived / reset history |
+| `bus_positions` | GPS history (speed, accuracy); rows older than 24 h are deleted hourly by pg_cron |
 | `dispatch_decisions` | Release / hold recommendations and HQ decisions |
 | `selection_events` | Every board/screen choice and its outcome (confirmed / changed / cancelled / timeout) |
 | `config` | Dispatch rules, editable on the dashboard |
@@ -148,6 +150,15 @@ Everything in the database comes from `supabase/migrations/` and `supabase/seed.
 
 Functions: `create_token`, `run_dispatch` (every minute via **pg_cron**), `approve_decision`,
 `dismiss_decision`, `update_bus_location`, `mark_bus_arrived`, `reset_bus`, `log_selection`, `reset_demo`.
+
+**Live tracking.** Each GPS fix from `/bus` (`update_bus_location`) is stored in `bus_positions`, then
+projected onto the bus's route: that gives the last stop passed, the next stop, stops remaining
+and the distance left along the route; ETA = distance left ÷ `avg_bus_speed_kmh`. A released bus
+that leaves its terminal radius logs `departed`; inside `arrival_radius_m` of the kiosk it arrives
+and passengers board. More than `off_route_m` (500 m) from the route, the ETA falls back to a
+straight line to the kiosk. The dashboard shows every bus on a Leaflet + OpenStreetMap map; the
+kiosk ticket shows a stop-by-stop strip ("Bus R2-01 · passed Kimihurura · 2 stops away · about 6 min").
+Stop coordinates are approximate.
 
 ### Changing the schema (Danny)
 

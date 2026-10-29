@@ -75,8 +75,10 @@ sequenceDiagram
   Note over DB: pg_cron: run_dispatch() → "Release a bus"
   HQ->>DB: approve_decision → bus R4-01 on the way
   DB-->>K: Realtime: "R4-01 · 8 min"
-  D->>DB: update_bus_location (every 5 s)
-  DB-->>K: ETA updates
+  D->>DB: update_bus_location (every 5 s, with speed and accuracy)
+  Note over DB: history → bus_positions · leaves terminal → "departed"<br/>project onto route → next stop, stops left, ETA
+  DB-->>K: route strip "passed Kimihurura · 2 stops away · 6 min"
+  DB-->>HQ: bus moves on the live map
   D->>DB: within 50 m → mark_bus_arrived (gps)
   DB-->>K: "Your bus is here" · passengers boarded
 ```
