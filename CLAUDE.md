@@ -48,18 +48,18 @@ waits on hardware.
 
 Four destination stops for the demo (final). Codes are what the board sends.
 
-| code | name | route | route colour token | voice label (say) | gesture label | gesture hint | board LED |
-|---|---|---|---|---|---|---|---|
-| REM | Remera | R2 | `--route-2` | `remera` | `one_tap` | Tap once | green |
-| DTN | Downtown | R4 | `--route-4` | `downtown` | `two_taps` | Tap twice | purple |
-| NYA | Nyabugogo | R1 | `--route-1` | `nyabugogo` | `three_taps` | Tap 3 times | blue |
-| KIM | Kimironko | R3 | `--route-3` | `kimironko` | `hold` | Hold your hand still | yellow |
+| code | name | route | route colour token | voice label (say) | gesture label (swipe, default) | gesture hint | tap label (GESTURE_RULE / tap model) | tap hint | board LED |
+|---|---|---|---|---|---|---|---|---|---|
+| REM | Remera | R2 | `--route-2` | `remera` | `swipe_left` | Swipe left | `one_tap` | Tap once | green |
+| DTN | Downtown | R4 | `--route-4` | `downtown` | `swipe_right` | Swipe right | `two_taps` | Tap twice | purple |
+| NYA | Nyabugogo | R1 | `--route-1` | `nyabugogo` | `swipe_up` | Swipe up | `three_taps` | Tap 3 times | blue |
+| KIM | Kimironko | R3 | `--route-3` | `kimironko` | `swipe_down` | Swipe down | `hold` | Hold your hand still | yellow |
 
-Non-selecting labels: voice `noise`, `unknown`; gesture `passing`, `idle`.
+Non-selecting labels: voice `noise`, `unknown`; tap model `passing`, `idle`.
 They never select anything.
 
-> Keep the mapping only in: seed data (`destinations.voice_label/gesture_label/gesture_hint`),
-> `apps/web/lib/destinations.ts` and `firmware/kiosk_node/config.h`. A Vitest test checks
+> Keep the mapping only in: seed data (`destinations.voice_label/gesture_label/gesture_hint`, swipes),
+> `apps/web/lib/destinations.ts` and `firmware/kiosk_node/config.h` (swipes and taps). A Vitest test checks
 > that config.h and destinations.ts agree.
 
 Kiosk location: `STOP-01`, name "Kiosk 1 (Demo)", lat -1.9441, lng 30.0619.

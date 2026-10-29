@@ -98,22 +98,26 @@ arduino-cli upload  --fqbn arduino:mbed_nano:nano33ble -p /dev/cu.usbmodem1101 f
 firmware/scripts/compile-all.sh                          # every config that doesn't need model zips
 ```
 
-The default build is `VOICE_MODEL` + `GESTURE_RULE`: the trained voice model plus rule-based taps.
+The default build is `VOICE_MODEL` + `GESTURE_SWIPE`: the trained voice model plus swipes read by the
+APDS9960's own direction engine (on a separate thread, so voice never slows it). The older tap rules are
+still a build switch (`GESTURE_RULE`); the kiosk shows tap hints automatically when the board runs them.
 It needs the voice library installed once:
 `arduino-cli lib install --zip-path "ml/exports/ei-tap-and-select-voice-arduino-1.0.1-impulse-#1.zip"`.
 Then on `/kiosk`: **Connect board** → choose the Arduino (**Any port** lists every serial device).
 Close any Serial Monitor first: only one program can open the port. After the first time the kiosk
 reconnects by itself on reload and when the board is plugged back in.
 
-| Stop | Say | Over the sensor | Board LED after SELECT |
-|---|---|---|---|
-| Remera (R2) | "Remera" | Tap once | green |
-| Downtown (R4) | "Downtown" | Tap twice | purple |
-| Nyabugogo (R1) | "Nyabugogo" | Tap 3 times | blue |
-| Kimironko (R3) | "Kimironko" | Hold your hand still | yellow |
+| Stop | Say | Swipe over the sensor | Tap build | Board LED after SELECT |
+|---|---|---|---|---|
+| Remera (R2) | "Remera" | ← Swipe left | Tap once | green |
+| Downtown (R4) | "Downtown" | → Swipe right | Tap twice | purple |
+| Nyabugogo (R1) | "Nyabugogo" | ↑ Swipe up | Tap 3 times | blue |
+| Kimironko (R3) | "Kimironko" | ↓ Swipe down | Hold your hand still | yellow |
 
 The mapping lives in `supabase/seed.sql`, `apps/web/lib/destinations.ts` and
 `firmware/kiosk_node/config.h`; `tests/firmware-config.test.ts` fails if config.h drifts.
+If "left" comes out wrong once the board is mounted, see firmware/README.md, "Swipes" (orientation flags).
+Gesture reliability is measured with `firmware/scripts/gesture-trials.mjs` (`ml/results/gesture-trials.md`).
 
 ### Edge Impulse models
 

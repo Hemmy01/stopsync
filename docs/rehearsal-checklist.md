@@ -18,7 +18,9 @@
 - [ ] Laptop A: charger in, sleep disabled, notifications off, Chrome zoom 100%, full screen (`⌃⌘F`).
 - [ ] Board on USB (data cable, not charge-only); kiosk **Connect board** → pill *Connected*.
 - [ ] No Serial Monitor / `arduino-cli monitor` open (they lock the port).
-- [ ] Tap test over the sensor in the real room lighting; adjust `PROX_*` if the room is very bright.
+- [ ] Swipe test over the mounted board in the real room lighting: swipe left must log `gesture=swipe_left`
+      (else set the `SWIPE_*` orientation flags, firmware/README.md "Swipes"). Run
+      `firmware/scripts/gesture-trials.mjs` once; aim for ≥ 18/20 per swipe and 0 false selects.
 - [ ] Voice test at demo volume; check the room noise doesn't select anything over 20 s of listening.
 - [ ] Laptop B: `/dashboard` open; **Reset demo** done; **Release after waiting** = `1`.
 - [ ] Phone: charged, location on, `/bus` opened on the `https://` URL, permission granted, bus list loads.
@@ -34,7 +36,7 @@
 | Approve on dashboard → kiosk ticket + strip update | | |
 | Phone GPS → ETA updates on kiosk + dashboard | | |
 | Arrival (GPS radius or button) → boarded | | |
-| Board: tap once / twice / 3 times / hold → REM / DTN / NYA / KIM | | |
+| Board: swipe left / right / up / down → REM / DTN / NYA / KIM | | |
 | Board: Change → listens again | | |
 | Board: LEDs (blue breathing, route colour, green pulse) | | |
 | Voice (if model loaded): each stop | | |

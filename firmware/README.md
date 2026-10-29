@@ -1,8 +1,8 @@
 # Tap&Select firmware (`kiosk_node`)
 
 Runs on the **Arduino Nano 33 BLE Sense Lite** plugged into the kiosk laptop by USB.
-After the kiosk sends `START`, the board listens for a **voice keyword** or a **tap gesture**
-over the proximity sensor and replies `SELECT,<code>,<voice|gesture>,<confidence>`.
+After the kiosk sends `START`, the board listens for a **voice keyword** or a **swipe** over the
+APDS9960 sensor and replies `SELECT,<code>,<voice|gesture>,<confidence>`.
 Protocol: [`docs/protocol.md`](../docs/protocol.md).
 
 | File | What it does |
@@ -10,11 +10,12 @@ Protocol: [`docs/protocol.md`](../docs/protocol.md).
 | `kiosk_node/kiosk_node.ino` | State machine: IDLE → LISTENING → WAIT_ACK, timeouts, one SELECT per START |
 | `kiosk_node/config.h` | **Every switch and tunable**: modes, model headers, destination mapping, thresholds, LED colours |
 | `kiosk_node/protocol.*` | Non-blocking line reader (`START`, `ACK,<code>`, `CANCEL`) and senders |
-| `kiosk_node/led.*` | Non-blocking RGB LED patterns (active LOW) |
-| `kiosk_node/gestures.*` | APDS9960 proximity: rule-based taps (`GESTURE_RULE`) or the model's 20 Hz window (`GESTURE_MODEL`) |
+| `kiosk_node/led.*` | Non-blocking RGB LED patterns (active LOW), plus a one-off white blink per gesture event |
+| `kiosk_node/gestures.*` | APDS9960 on its own RTOS thread: swipes (`GESTURE_SWIPE`, default), rule-based taps (`GESTURE_RULE`) or the tap model's 20 Hz window (`GESTURE_MODEL`). Events reach `loop()` through a small locked queue |
 | `kiosk_node/voice.*` | PDM microphone double buffer + consecutive-result rule (`VOICE_MODEL`) |
 | `kiosk_node/models.*` | The only file that includes an Edge Impulse header (its globals must live in one `.cpp`); also keeps the SDK's `ei_printf` off the serial line |
 | `scripts/compile-all.sh` | Compiles every config (model builds once their library is installed), prints flash/RAM |
+| `scripts/gesture-trials.mjs` | 20 tries per gesture against the real board, results table into `ml/results/gesture-trials.md` |
 
 ## Behaviour
 
@@ -25,9 +26,16 @@ Protocol: [`docs/protocol.md`](../docs/protocol.md).
 | WAIT_ACK | route colour (REM green, DTN purple, NYA blue, KIM yellow) | `ACK` → green pulse → IDLE · `START` → LISTENING · `CANCEL` → IDLE · 30 s → IDLE |
 
 - When a program opens the port the board sends exactly `HELLO,STOP-01` then
-  `LOG,voice=model,gesture=rule,fw=0.2.0` (modes `model|off` and `model|rule|off`), plus a `LOG`
+  `LOG,voice=model,gesture=swipe,fw=0.3.0` (modes `model|off` and `swipe|rule|model|off`), plus a `LOG`
   line for any sensor that failed to start. At boot it waits at most `SERIAL_WAIT_MS` (2 s) for a host.
-- Voice and taps both run while LISTENING; whichever is confident first wins.
+- Voice and gestures both run while LISTENING; whichever is confident first wins.
+- Every gesture event while LISTENING (a swipe, a tap, a finished tap group) is sent as
+  `LOG,gesture=<event>` and blinks the LED white once (`LED_BLINK_MS`, 120 ms). The kiosk shows the
+  latest one live.
+- The APDS9960 is read on its own mbed RTOS thread (`osPriorityAboveNormal`, 3 KB stack). Voice
+  inference in `loop()` takes ~100 ms per slice; before 0.3.0 the sensor wasn't read during that time,
+  so fast taps were missed. Only that thread touches the sensor (I2C) after `setup()`; it hands events
+  to `loop()` through a queue guarded by `mbed::CriticalSectionLock`. Serial and the LED stay in `loop()`.
 - Nothing but protocol lines reaches the serial port: Edge Impulse SDK messages (`ei_printf`) are
   turned into `LOG,ei=<text>`.
 - If the port closes while listening, the board goes idle.
@@ -37,19 +45,21 @@ Protocol: [`docs/protocol.md`](../docs/protocol.md).
 
 ```cpp
 #define VOICE_MODE   VOICE_MODEL    // VOICE_MODEL | VOICE_OFF
-#define GESTURE_MODE GESTURE_RULE   // GESTURE_MODEL | GESTURE_RULE | GESTURE_OFF
+#define GESTURE_MODE GESTURE_SWIPE  // GESTURE_SWIPE | GESTURE_MODEL | GESTURE_RULE | GESTURE_OFF
 #define EI_LAYOUT    EI_SEPARATE    // EI_SEPARATE | EI_MULTI_IMPULSE
 ```
 
 | Voice | Gesture | Needs |
 |---|---|---|
-| `VOICE_MODEL` | `GESTURE_RULE` | voice library (**default**, the demo build) |
-| `VOICE_OFF` | `GESTURE_RULE` | nothing (taps only) |
-| `VOICE_OFF` | `GESTURE_MODEL` | gesture zip |
+| `VOICE_MODEL` | `GESTURE_SWIPE` | voice library (**default**, the demo build) |
+| `VOICE_MODEL` | `GESTURE_RULE` | voice library (tap rules, the 0.2.0 behaviour on the new thread) |
+| `VOICE_OFF` | `GESTURE_SWIPE` / `GESTURE_RULE` | nothing |
+| `VOICE_OFF` | `GESTURE_MODEL` | tap model zip |
 | `VOICE_MODEL` | `GESTURE_MODEL` | a merged multi-impulse library (`EI_LAYOUT EI_MULTI_IMPULSE`), see option 1 |
 
-`-D` flags override the switches without editing the file, e.g.
-`--build-property "compiler.cpp.extra_flags=-DVOICE_MODE=1 -DGESTURE_MODE=1"`.
+`-D` flags override the switches without editing the file. The mode numbers are
+`GESTURE_OFF 0`, `GESTURE_RULE 1`, `GESTURE_MODEL 2`, `GESTURE_SWIPE 3`, e.g.
+`--build-property "compiler.cpp.extra_flags=-DVOICE_MODE=1 -DGESTURE_MODE=1"` for voice + tap rules.
 
 ## One-time setup (macOS, zsh)
 
@@ -105,10 +115,41 @@ Based on Edge Impulse's `nano_ble33_sense_microphone_continuous` example (PDM at
 while listening, e.g. `LOG,scores,downtown=0.02,kimironko=0.01,noise=0.03,nyabugogo=0.00,remera=0.93,unknown=0.01`.
 The kiosk debug drawer (press **D**) shows these as small bars. Turn it off again for the demo.
 
+## Swipes (`GESTURE_SWIPE`, default)
+
+The APDS9960 has its own gesture engine: four photodiodes see a hand pass and report left, right,
+up or down. No ML, so the confidence is always 1.00.
+
+| Swipe | Selects |
+|---|---|
+| ← left | REM Remera |
+| → right | DTN Downtown |
+| ↑ up | NYA Nyabugogo |
+| ↓ down | KIM Kimironko |
+
+How to swipe: a flat hand, 3–10 cm above the sensor, one smooth pass right across it (about half a
+second). Too fast, too high or starting on top of the sensor gets missed.
+
+**Orientation.** "Left" depends on how the board is mounted. Once it's in place: `START` from the
+monitor or the kiosk, swipe left as a passenger would, and read `LOG,gesture=swipe_...`:
+
+| You swiped left and it says | Set in `config.h` |
+|---|---|
+| `swipe_left` | nothing |
+| `swipe_right` | `SWIPE_FLIP_X 1` |
+| `swipe_up` or `swipe_down` | `SWIPE_SWAP_AXES 1`, re-upload, then check left and up again (add `SWIPE_FLIP_X` / `SWIPE_FLIP_Y` as needed) |
+
+Order of operations: swap first, then flip X, then flip Y. `SWIPE_SENSITIVITY` (1–100, default 80):
+raise it if swipes are missed, lower it if a hand moving away counts as a swipe.
+
+Measure it: `node firmware/scripts/gesture-trials.mjs --port <port> --label after`
+(see `ml/results/gesture-trials.md`).
+
 ## Tuning the tap detector (`GESTURE_RULE`)
 
-With `GESTURE_RULE_LOG 1` the board logs every tap (`LOG,gesture=tap,ms=180,count=1`), slow press
-and group. Watch them in the kiosk debug drawer (press **D**) or `arduino-cli monitor`.
+The board logs every tap (`LOG,gesture=tap,ms=180,count=1`), slow press (`slow_press,ms=…`) and group
+(`one_tap`, `ignored,taps=4`, …), with an LED blink each. Watch them in the kiosk debug drawer (press **D**)
+or `arduino-cli monitor`.
 
 | Setting | Default | Change it when |
 |---|---|---|
@@ -170,24 +211,24 @@ in both (EON compiler on in both, both int8 or both float32), no anomaly block.
 `run_classifier(&gesture, …)`) and reads sizes from each impulse struct, so no code changes.
 Watch RAM: the compile output must leave room for the voice model's arena.
 
-### Option 2: voice model + rule-based gestures (one build, no merge)
+### Option 2: voice model + swipes or tap rules (one build, no merge)
 
 The safe demo build. Only one Edge Impulse library is involved.
 
 1. Install the voice zip (see "When the models arrive").
-2. `config.h`: `VOICE_MODE VOICE_MODEL`, `GESTURE_MODE GESTURE_RULE`, `EI_LAYOUT EI_SEPARATE`.
-3. Compile and upload. Taps still work through the rule detector (confidence 1.00).
+2. `config.h`: `VOICE_MODE VOICE_MODEL`, `GESTURE_MODE GESTURE_SWIPE` (or `GESTURE_RULE`), `EI_LAYOUT EI_SEPARATE`.
+3. Compile and upload. Gestures work without ML: swipes or the tap rules (confidence 1.00).
 
 ### Option 3: two builds, one per model
 
 Use when option 1 is too heavy and the gesture model itself must be shown.
 
 1. Install both zips (separately they don't clash; only one is compiled per build).
-2. Build A (voice): `VOICE_MODEL` + `GESTURE_RULE` (or `GESTURE_OFF`).
+2. Build A (voice): `VOICE_MODEL` + `GESTURE_SWIPE` (or `GESTURE_RULE` / `GESTURE_OFF`).
    Build B (gestures): `VOICE_OFF` + `GESTURE_MODEL`.
    ```zsh
    arduino-cli compile --fqbn arduino:mbed_nano:nano33ble --output-dir build/voice \
-     --build-property "compiler.cpp.extra_flags=-DVOICE_MODE=1 -DGESTURE_MODE=1" firmware/kiosk_node
+     --build-property "compiler.cpp.extra_flags=-DVOICE_MODE=1 -DGESTURE_MODE=3" firmware/kiosk_node
    arduino-cli compile --fqbn arduino:mbed_nano:nano33ble --output-dir build/gesture \
      --build-property "compiler.cpp.extra_flags=-DVOICE_MODE=0 -DGESTURE_MODE=2" firmware/kiosk_node
    ```
@@ -258,7 +299,7 @@ Re-exported a model? Install the new zip the same way; it replaces the old versi
 
 | Have | Set |
 |---|---|
-| Voice only | `VOICE_MODE VOICE_MODEL`, `GESTURE_MODE GESTURE_RULE` (option 2) |
+| Voice only | `VOICE_MODE VOICE_MODEL`, `GESTURE_MODE GESTURE_SWIPE` (option 2) |
 | Gestures only | `VOICE_MODE VOICE_OFF`, `GESTURE_MODE GESTURE_MODEL` |
 | Both | option 1 (merged library) or option 3 (two builds) above |
 
@@ -279,14 +320,15 @@ Type `START` and say a stop: expect `SELECT,REM,voice,0.9x` then `STATE,IDLE`. C
 Open the kiosk, **Connect board**, press **D** for the drawer. For each stop and each input:
 tap a demo card, say the name (or do the gesture) once, note the result, press **Change** to retry.
 
-| Stop | Say | Gesture | Voice hits /10 | Gesture hits /10 |
-|---|---|---|---|---|
-| REM | "Remera" | Tap once | | |
-| DTN | "Downtown" | Tap twice | | |
-| NYA | "Nyabugogo" | Tap 3 times | | |
-| KIM | "Kimironko" | Hold your hand still | | |
+| Stop | Say | Swipe | Tap (tap model) | Voice hits /10 | Gesture hits /10 |
+|---|---|---|---|---|---|
+| REM | "Remera" | ← left | Tap once | | |
+| DTN | "Downtown" | → right | Tap twice | | |
+| NYA | "Nyabugogo" | ↑ up | Tap 3 times | | |
+| KIM | "Kimironko" | ↓ down | Hold your hand still | | |
 
 Also try 10 × background talking and 10 × a hand passing: nothing should select.
+For gestures, `firmware/scripts/gesture-trials.mjs` runs and scores these tries for you (20 each).
 Record the results in `ml/results/voice.md` and `ml/results/gestures.md`, then update
 `apps/web/content/models.json` (status `on_board`, test accuracy, date) so the dashboard and `/about` show them.
 
@@ -308,12 +350,13 @@ passengers press Change per method.
    `arduino-cli upload --fqbn arduino:mbed_nano:nano33ble -p /dev/cu.usbmodem1101 firmware/kiosk_node`
 2. Open `/kiosk` (`http://localhost:3000/kiosk` or the Vercel `https://` URL; Web Serial needs one of the two)
    in Chrome or Edge, click **Connect board**, choose the Arduino.
-3. Press **D**: the drawer shows `HELLO,STOP-01` and `LOG,voice=model,gesture=rule,fw=0.2.0`; the pill says **Connected**.
+3. Press **D**: the drawer shows `HELLO,STOP-01` and `LOG,voice=model,gesture=swipe,fw=0.3.0`; the pill says **Connected**.
 4. Tap a demo card → LED blue breathing → say "Remera" from 30–50 cm → *Remera?* · *Heard by voice · 9x%*
    → **Confirm** → ticket → LED green pulse.
 5. Repeat for Nyabugogo, Kimironko, Downtown. Then say other words, and stay silent for 20 s:
    nothing may be selected.
-6. Tap twice over the sensor → *Downtown?* · *Gesture · 100%*.
+6. Swipe right over the sensor → LED blinks white, the kiosk shows *Sensor saw → Swipe right*, then
+   *→ Downtown* for a moment, then *Downtown?* · *Gesture · 100%*.
 7. Unplug and replug the board: the kiosk reconnects by itself and the pill returns to **Connected**.
 
 ## Troubleshooting

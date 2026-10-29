@@ -57,34 +57,38 @@ Examples:
 
 ```
 SELECT,KIM,voice,0.91
-SELECT,DTN,gesture,0.88
-LOG,voice=model,gesture=rule,fw=0.2.0
+SELECT,DTN,gesture,1.00
+LOG,voice=model,gesture=swipe,fw=0.3.0
+LOG,gesture=swipe_right
 ```
 
 `LOG` lines the firmware sends:
 
 | Line | Meaning |
 |---|---|
-| `LOG,voice=model,gesture=rule,fw=0.2.0` | Sent right after `HELLO`: build modes (`model`/`off`, `model`/`rule`/`off`) and firmware version |
+| `LOG,voice=model,gesture=swipe,fw=0.3.0` | Sent right after `HELLO`: build modes (voice `model`/`off`; gesture `swipe`/`rule`/`model`/`off`) and firmware version. The kiosk shows swipe hints for `swipe` and tap hints for `rule`/`model`. |
 | `LOG,scores,downtown=0.02,kimironko=0.01,...` | Every voice label's score, once per model window while listening (only with `DEBUG_SCORES 1`). The drawer shows them as bars. |
 | `LOG,voice_overrun` | The voice model fell behind the microphone (see firmware/README.md, Troubleshooting) |
-| `LOG,gesture=tap,ms=180,count=1` | Rule tap detector events (with `GESTURE_RULE_LOG 1`) |
+| `LOG,gesture=<event>[,key=value…]` | Every gesture event while listening; the LED blinks once for each. Swipe build: `swipe_left`, `swipe_right`, `swipe_up`, `swipe_down`. Tap build: `tap,ms=180,count=1`, `one_tap`, `two_taps`, `three_taps`, `hold`, `slow_press,ms=900`, `ignored,taps=4`. The kiosk shows the latest one live ("Sensor saw ← Swipe left"). |
+| `LOG,gesture=<error text>` | A gesture sensor problem at connect, e.g. `gesture=APDS9960 not found` (contains spaces, so it's never mistaken for an event) |
 | `LOG,timeout=listening` · `LOG,timeout=wait_ack` | The board's safety timeouts fired |
 | `LOG,ignored=<line>` | The board received a line it doesn't understand |
 | `LOG,ei=<text>` | A message from the Edge Impulse SDK |
 
 ### Destination codes and how they are chosen
 
-| code | Stop | Route | Voice label (say) | Gesture label | Over the sensor | Board LED |
-|---|---|---|---|---|---|---|
-| `REM` | Remera | R2 | `remera` | `one_tap` | Tap once | green |
-| `DTN` | Downtown | R4 | `downtown` | `two_taps` | Tap twice | purple |
-| `NYA` | Nyabugogo | R1 | `nyabugogo` | `three_taps` | Tap 3 times | blue |
-| `KIM` | Kimironko | R3 | `kimironko` | `hold` | Hold your hand still | yellow |
+| code | Stop | Route | Voice label (say) | Gesture label (default) | Over the sensor | Tap label (tap build) | Tap hint | Board LED |
+|---|---|---|---|---|---|---|---|---|
+| `REM` | Remera | R2 | `remera` | `swipe_left` | Swipe left ← | `one_tap` | Tap once | green |
+| `DTN` | Downtown | R4 | `downtown` | `swipe_right` | Swipe right → | `two_taps` | Tap twice | purple |
+| `NYA` | Nyabugogo | R1 | `nyabugogo` | `swipe_up` | Swipe up ↑ | `three_taps` | Tap 3 times | blue |
+| `KIM` | Kimironko | R3 | `kimironko` | `swipe_down` | Swipe down ↓ | `hold` | Hold your hand still | yellow |
 
-Labels that never select anything: voice `noise`, `unknown`; gesture `passing`, `idle`.
-The mapping lives in `supabase/seed.sql`, `apps/web/lib/destinations.ts` and
-`firmware/kiosk_node/config.h`; a Vitest test checks the last two agree.
+Directions are as the passenger sees them; `SWIPE_SWAP_AXES` / `SWIPE_FLIP_X` / `SWIPE_FLIP_Y`
+in `config.h` correct for how the board is mounted (firmware/README.md).
+Labels that never select anything: voice `noise`, `unknown`; tap model `passing`, `idle`.
+The mapping lives in `supabase/seed.sql` (swipe labels and hints), `apps/web/lib/destinations.ts` and
+`firmware/kiosk_node/config.h` (both: swipe and tap labels); a Vitest test checks the last two agree.
 
 ## Kiosk → board
 
@@ -99,6 +103,10 @@ The mapping lives in `supabase/seed.sql`, `apps/web/lib/destinations.ts` and
 - Unknown or malformed lines are **ignored** and shown in the kiosk's debug drawer with the reason. They never crash the page.
 - `SELECT` is only accepted while the kiosk is on the **listening** step; at other times it is ignored.
 - `SELECT` is only accepted for the four known destination codes.
+- A `SELECT` with method `gesture` first shows the recognised gesture for 1.2 s ("→ Downtown"), then the
+  confirm step. Voice and on-screen choices go straight to confirm.
+- `LOG` lines are never acted on. The kiosk only reads two kinds for display: the connect line (which hints
+  to show) and `gesture=<event>` (live feedback while listening).
 - Listening times out after **20 s** and the confirm step after **15 s**; both send `CANCEL`.
 - Every outcome of a board or on-screen choice (confirmed, changed, cancelled, timeout) is recorded
   in the `selection_events` table; the dashboard's Model insights panel reads it.
@@ -108,6 +116,7 @@ The mapping lives in `supabase/seed.sql`, `apps/web/lib/destinations.ts` and
 - Safety timeouts in case the kiosk goes quiet: **25 s** listening, **30 s** waiting for `ACK`.
 - After a `SELECT` the board stops listening until the next `START`.
 - Voice and gesture both run while listening; the first confident result is sent.
+- The gesture sensor is read on its own RTOS thread, so voice processing never delays it.
 - `HELLO` (followed by the modes `LOG`) is sent every time a program opens the port, so a kiosk
   that connects late, or reconnects after an unplug, always sees it. The kiosk's status pill shows
   **Connected** only after `HELLO` arrives.
@@ -130,8 +139,10 @@ board → SELECT,KIM,voice,0.84
          (passenger presses Change)
 kiosk → START
 board → STATE,LISTENING
+board → LOG,gesture=swipe_right
 board → SELECT,DTN,gesture,1.00
-         (passenger presses Confirm)
+board → STATE,IDLE
+         (kiosk shows "→ Downtown", then the confirm step; passenger presses Confirm)
 kiosk → ACK,R4-007
 ```
 
