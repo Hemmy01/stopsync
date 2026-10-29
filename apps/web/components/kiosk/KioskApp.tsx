@@ -13,6 +13,7 @@ import { ConfirmStage } from "./ConfirmStage";
 import { ConnectBoardControl } from "./ConnectBoardControl";
 import { DebugDrawer } from "./DebugDrawer";
 import { DepartureStrip } from "./DepartureStrip";
+import { DetectedStage } from "./DetectedStage";
 import { IdleStage } from "./IdleStage";
 import { KioskTopBar } from "./KioskTopBar";
 import { ListeningStage } from "./ListeningStage";
@@ -96,7 +97,9 @@ export function KioskApp() {
   const drawerOpen = drawerToggle ?? mockParam;
   const mockMode = mockParam || drawerOpen;
 
-  const { state, board, tapCard, selectManually, confirm, change, cancel } = useKiosk({ mockMode });
+  const { state, board, gestureMode, liveGesture, tapCard, selectManually, confirm, change, cancel } = useKiosk({
+    mockMode,
+  });
   const network = useLiveNetwork();
   const stopName = useStopName(STOP_ID);
 
@@ -147,10 +150,19 @@ export function KioskApp() {
 
         <div className="min-h-0 flex-1">
           {(state.step === "idle" || state.step === "checking") && (
-            <IdleStage reading={state.step === "checking"} onTap={tapCard} />
+            <IdleStage reading={state.step === "checking"} gestureMode={gestureMode} onTap={tapCard} />
           )}
 
-          {state.step === "listening" && <ListeningStage onSelect={selectManually} onCancel={cancel} />}
+          {state.step === "listening" && (
+            <ListeningStage
+              gestureMode={gestureMode}
+              liveGesture={liveGesture}
+              onSelect={selectManually}
+              onCancel={cancel}
+            />
+          )}
+
+          {state.step === "detected" && <DetectedStage selection={state.selection} gestureMode={gestureMode} />}
 
           {(state.step === "confirm" || state.step === "submitting") && (
             <ConfirmStage

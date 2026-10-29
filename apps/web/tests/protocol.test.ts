@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { createLineBuffer, formatCommand, parseBoardLine, parseScores } from "@/lib/protocol";
+import {
+  createLineBuffer,
+  formatCommand,
+  parseBoardLine,
+  parseBoardModes,
+  parseGestureLog,
+  parseScores,
+} from "@/lib/protocol";
 
 describe("parseBoardLine", () => {
   it("parses HELLO", () => {
@@ -141,5 +148,33 @@ describe("createLineBuffer", () => {
     const buffer = createLineBuffer(10);
     buffer.push("x".repeat(20));
     expect(buffer.push("\nSTATE,IDLE\n")).toEqual(["STATE,IDLE"]);
+  });
+});
+
+describe("parseBoardModes", () => {
+  it("reads the connect line", () => {
+    expect(parseBoardModes("voice=model,gesture=swipe,fw=0.3.0")).toEqual({ voice: "model", gesture: "swipe", fw: "0.3.0" });
+    expect(parseBoardModes("voice=off,gesture=rule")).toEqual({ voice: "off", gesture: "rule", fw: null });
+  });
+
+  it("ignores other LOG lines and unknown gesture modes", () => {
+    expect(parseBoardModes("gesture=swipe_left")).toBeNull();
+    expect(parseBoardModes("scores,remera=0.9")).toBeNull();
+    expect(parseBoardModes("voice=model,gesture=wave,fw=1")).toBeNull();
+    expect(parseBoardModes("voice=model")).toBeNull();
+  });
+});
+
+describe("parseGestureLog", () => {
+  it("reads swipe and tap events", () => {
+    expect(parseGestureLog("gesture=swipe_left")).toEqual({ event: "swipe_left", details: {} });
+    expect(parseGestureLog("gesture=tap,ms=180,count=2")).toEqual({ event: "tap", details: { ms: "180", count: "2" } });
+  });
+
+  it("ignores sensor errors, other LOG lines and malformed details", () => {
+    expect(parseGestureLog("gesture=APDS9960 not found")).toBeNull();
+    expect(parseGestureLog("gesture=classifier error")).toBeNull();
+    expect(parseGestureLog("voice=model,gesture=swipe,fw=0.3.0")).toBeNull();
+    expect(parseGestureLog("gesture=tap,oops")).toBeNull();
   });
 });

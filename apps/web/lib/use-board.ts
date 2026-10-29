@@ -88,6 +88,8 @@ export function useBoard({ mockMode, onMessage }: { mockMode: boolean; onMessage
       }
       const { message } = result;
       if (message.type === "LOG") {
+        // Diagnostics: the kiosk may show them (board mode, live gestures) but never acts on them.
+        onMessageRef.current(message);
         append({ direction: "in", text, note: "Diagnostics", scores: parseScores(message.text) ?? undefined });
         return;
       }

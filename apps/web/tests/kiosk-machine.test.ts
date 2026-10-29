@@ -52,6 +52,37 @@ describe("kioskReducer: happy path", () => {
   });
 });
 
+describe("kioskReducer: gesture detected", () => {
+  const gestureDtn: Selection = { code: "DTN", method: "gesture", confidence: 1 };
+
+  it("a board gesture shows the detected step first, then confirm", () => {
+    let state = kioskReducer(listening(), { type: "SELECTED", selection: gestureDtn });
+    expect(state).toEqual({ step: "detected", cardId: "CARD-01", selection: gestureDtn });
+
+    state = kioskReducer(state, { type: "DETECTED_SHOWN" });
+    expect(state).toEqual({ step: "confirm", cardId: "CARD-01", selection: gestureDtn });
+  });
+
+  it("voice and screen taps go straight to confirm", () => {
+    expect(kioskReducer(listening(), { type: "SELECTED", selection: voiceKim }).step).toBe("confirm");
+    expect(
+      kioskReducer(listening(), { type: "SELECTED", selection: { code: "KIM", method: "manual", confidence: null } }).step,
+    ).toBe("confirm");
+  });
+
+  it("ignores DETECTED_SHOWN and a second SELECT outside the detected step", () => {
+    expect(kioskReducer(listening(), { type: "DETECTED_SHOWN" }).step).toBe("listening");
+    const detected = kioskReducer(listening(), { type: "SELECTED", selection: gestureDtn });
+    expect(kioskReducer(detected, { type: "SELECTED", selection: voiceKim })).toBe(detected);
+  });
+
+  it("cancel from detected returns to idle; the step has no timeout of its own", () => {
+    const detected = kioskReducer(listening(), { type: "SELECTED", selection: gestureDtn });
+    expect(kioskReducer(detected, { type: "CANCEL" })).toEqual(initialKioskState);
+    expect(kioskReducer(detected, { type: "TIMEOUT" })).toBe(detected);
+  });
+});
+
 describe("kioskReducer: duplicates", () => {
   it("shows the existing ticket when the card is already queued at tap time", () => {
     const state = run(
@@ -150,6 +181,7 @@ describe("helpers", () => {
 
   it("sends CANCEL to the board only when it may still be listening", () => {
     expect(timeoutSendsCancel("listening")).toBe(true);
+    expect(timeoutSendsCancel("detected")).toBe(true);
     expect(timeoutSendsCancel("confirm")).toBe(true);
     expect(timeoutSendsCancel("ticket")).toBe(false);
     expect(timeoutSendsCancel("duplicate")).toBe(false);
@@ -204,6 +236,21 @@ describe("transitionEffects", () => {
       outcome: { selection: voice, outcome: "timeout", tokenCode: null },
     });
     expect(run(confirmState, { type: "CANCEL" }).outcome?.outcome).toBe("cancelled");
+  });
+
+  it("cancel while a gesture is shown sends CANCEL and logs 'cancelled'", () => {
+    const gesture: Selection = { code: "DTN", method: "gesture", confidence: 1 };
+    expect(run({ step: "detected", cardId: "CARD-01", selection: gesture }, { type: "CANCEL" })).toEqual({
+      commands: [{ type: "CANCEL" }],
+      outcome: { selection: gesture, outcome: "cancelled", tokenCode: null },
+    });
+  });
+
+  it("showing the detected gesture sends nothing to the board", () => {
+    const gesture: Selection = { code: "DTN", method: "gesture", confidence: 1 };
+    expect(run({ step: "detected", cardId: "CARD-01", selection: gesture }, { type: "DETECTED_SHOWN" })).toEqual({
+      commands: [],
+    });
   });
 
   it("listening timeout sends CANCEL with nothing to log", () => {

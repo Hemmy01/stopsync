@@ -24,8 +24,10 @@ const DIRECTION = {
 } as const;
 
 const VOICE_CONF = 0.91;
-const GESTURE_CONF = 0.88;
-const BOOT_LOG = "LOG,voice=model,gesture=rule,fw=0.2.0";
+// The swipe engine has no score; the board reports 1.00 like the tap rules did.
+const GESTURE_CONF = 1;
+const BOOT_LOG = "LOG,voice=model,gesture=swipe,fw=0.3.0";
+const BOOT_LOG_TAPS = "LOG,voice=model,gesture=rule,fw=0.3.0";
 const SAMPLE_SCORES = "LOG,scores,downtown=0.02,kimironko=0.01,noise=0.03,nyabugogo=0.00,remera=0.93,unknown=0.01";
 
 /** "LOG,scores,..." as one bar per label; the top label is marked in text, not colour alone. */
@@ -107,10 +109,27 @@ export function DebugDrawer({ mock, log, onClose }: DebugDrawerProps) {
             <EmitButton line="STATE,LISTENING" onEmit={emit} />
             <EmitButton line="STATE,IDLE" onEmit={emit} />
             <EmitButton line={BOOT_LOG} onEmit={emit}>
-              LOG
+              LOG swipe build
+            </EmitButton>
+            <EmitButton line={BOOT_LOG_TAPS} onEmit={emit}>
+              LOG tap build
             </EmitButton>
             <EmitButton line={SAMPLE_SCORES} onEmit={emit}>
               LOG scores
+            </EmitButton>
+          </div>
+        </section>
+
+        <section>
+          <h2 className="mb-2 text-sm font-semibold uppercase tracking-[0.12em] text-muted">Gesture events</h2>
+          <div className="flex flex-wrap gap-2">
+            {DESTINATIONS.map((d) => (
+              <EmitButton key={d.code} line={`LOG,gesture=${d.gestureLabel}`} onEmit={emit}>
+                {d.gestureLabel}
+              </EmitButton>
+            ))}
+            <EmitButton line="LOG,gesture=tap,ms=180,count=1" onEmit={emit}>
+              tap
             </EmitButton>
           </div>
         </section>

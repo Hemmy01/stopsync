@@ -96,6 +96,58 @@ export function parseScores(logText: string): LabelScore[] | null {
   return scores;
 }
 
+/** "a=1,b=2" → { a: "1", b: "2" }; null if any part isn't key=value. */
+function parseFields(text: string): Record<string, string> | null {
+  const fields: Record<string, string> = {};
+  for (const part of text.split(",")) {
+    const eq = part.indexOf("=");
+    if (eq <= 0) return null;
+    fields[part.slice(0, eq).trim()] = part.slice(eq + 1).trim();
+  }
+  return fields;
+}
+
+const GESTURE_MODES = ["swipe", "rule", "model", "off"] as const;
+export type BoardGestureMode = (typeof GESTURE_MODES)[number];
+
+export interface BoardModes {
+  voice: string;
+  gesture: BoardGestureMode;
+  fw: string | null;
+}
+
+/**
+ * The board's build from its connect line "LOG,voice=model,gesture=swipe,fw=0.3.0".
+ * Takes the LOG text; null for any other LOG line.
+ */
+export function parseBoardModes(logText: string): BoardModes | null {
+  if (!logText.startsWith("voice=")) return null;
+  const fields = parseFields(logText);
+  const gesture = fields?.gesture;
+  if (!fields?.voice || !gesture || !(GESTURE_MODES as readonly string[]).includes(gesture)) return null;
+  return { voice: fields.voice, gesture: gesture as BoardGestureMode, fw: fields.fw ?? null };
+}
+
+export interface GestureLogEvent {
+  /** e.g. "swipe_left", "tap", "two_taps", "hold", "ignored". */
+  event: string;
+  /** Extra key=value details, e.g. { ms: "180", count: "2" } for a tap. */
+  details: Record<string, string>;
+}
+
+/**
+ * A live gesture event from "LOG,gesture=<event>[,key=value…]" (firmware 0.3+).
+ * Takes the LOG text; null for other LOG lines, including sensor errors
+ * such as "gesture=APDS9960 not found".
+ */
+export function parseGestureLog(logText: string): GestureLogEvent | null {
+  const match = /^gesture=([a-z_]+)(?:,(.*))?$/.exec(logText);
+  if (!match) return null;
+  const details = match[2] === undefined ? {} : parseFields(match[2]);
+  if (details === null) return null;
+  return { event: match[1], details };
+}
+
 /** Serialise a kiosk command (without the trailing newline). */
 export function formatCommand(command: KioskCommand): string {
   switch (command.type) {

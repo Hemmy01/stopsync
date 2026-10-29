@@ -4,16 +4,19 @@ import { Loader2, Nfc, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { RouteBadge } from "@/components/RouteBadge";
 import { DEMO_CARDS, newTestCardId } from "@/lib/demo-cards";
-import { DESTINATIONS } from "@/lib/destinations";
+import { DESTINATIONS, gestureHintFor, swipeDirection } from "@/lib/destinations";
+import type { BoardGestureMode } from "@/lib/protocol";
+import { SwipeArrow } from "./SwipeArrow";
 
 interface IdleStageProps {
   /** True while the tapped card is being checked. */
   reading: boolean;
+  gestureMode: BoardGestureMode;
   onTap: (cardId: string) => void;
 }
 
-/** Small sign: the voice name and tap gesture for each stop. */
-function HowToChoose() {
+/** Small sign: the voice name and gesture for each stop. */
+function HowToChoose({ gestureMode }: { gestureMode: BoardGestureMode }) {
   return (
     <section aria-labelledby="how-to-choose" className="mt-8 max-w-xl rounded-card border border-line bg-surface">
       <h2 id="how-to-choose" className="border-b border-line px-5 py-3 text-base font-semibold uppercase tracking-[0.12em] text-muted">
@@ -37,7 +40,16 @@ function HowToChoose() {
                 </span>
               </td>
               <td className="py-2 text-muted">Say &ldquo;{d.name}&rdquo;</td>
-              <td className="py-2 pr-5 text-muted">{d.gestureHint}</td>
+              <td className="py-2 pr-5 text-muted">
+                {gestureMode === "off" ? null : (
+                  <span className="flex items-center gap-2">
+                    {gestureMode === "swipe" ? (
+                      <SwipeArrow direction={swipeDirection(d.gestureLabel)} className="h-5 w-5 text-ink" />
+                    ) : null}
+                    {gestureHintFor(d, gestureMode)}
+                  </span>
+                )}
+              </td>
             </tr>
           ))}
         </tbody>
@@ -47,7 +59,7 @@ function HowToChoose() {
 }
 
 /** Step 1: "Tap your card to begin", with a simulated card reader. */
-export function IdleStage({ reading, onTap }: IdleStageProps) {
+export function IdleStage({ reading, gestureMode, onTap }: IdleStageProps) {
   const [picking, setPicking] = useState(false);
 
   useEffect(() => {
@@ -63,9 +75,10 @@ export function IdleStage({ reading, onTap }: IdleStageProps) {
         <p className="text-lg font-semibold uppercase tracking-[0.12em] text-muted">Welcome</p>
         <h1 className="mt-3 text-[56px] leading-[1.05]">Tap your card to begin</h1>
         <p className="mt-5 max-w-lg text-[22px] text-muted">
-          Then say your stop or tap over the sensor. You&rsquo;ll get a queue number and live bus times.
+          Then say your stop or {gestureMode === "swipe" ? "swipe over the sensor" : "tap over the sensor"}. You&rsquo;ll
+          get a queue number and live bus times.
         </p>
-        <HowToChoose />
+        <HowToChoose gestureMode={gestureMode} />
       </div>
 
       <div className="relative">

@@ -42,7 +42,7 @@ function Section({ n, title, children }: { n: string; title: string; children: R
 
 const REAL = [
   ["Voice choice", "Real: Edge Impulse keyword model on the board"],
-  ["Tap choice over the sensor", "Real: rule-based tap detector on the board (a trained tap model is not built yet)"],
+  ["Swipe choice over the sensor", "Real: the APDS9960 sensor's built-in swipe direction engine on the board (no ML)"],
   ["Kiosk, database, dispatch, dashboard", "Real"],
   ["Bus location", "Real phone GPS (/bus page)"],
   ["Card tap (RFID)", "Simulated: demo cards on screen"],
@@ -112,19 +112,19 @@ function VoiceModelCard() {
   );
 }
 
-function TapRulesCard() {
+function SwipeCard() {
   return (
     <article className="break-inside-avoid rounded-card border border-line bg-surface p-5">
-      <h3 className="text-xl">Taps over the sensor</h3>
-      <p className="text-sm text-muted">Rule-based detector (no ML yet) · APDS9960 proximity sensor</p>
+      <h3 className="text-xl">Swipes over the sensor</h3>
+      <p className="text-sm text-muted">APDS9960 built-in direction engine (no ML) · read on its own thread</p>
       <dl className="mt-4 grid grid-cols-3 gap-3 text-sm">
         <div className="col-span-3">
-          <dt className="text-muted">Status</dt>
+          <dt className="text-muted">Tap model (planned)</dt>
           <dd className="font-semibold">{MODEL_STATUS_LABEL[MODELS.gesture.status]}</dd>
         </div>
       </dl>
       <table className="mt-4 w-full text-sm">
-        <caption className="sr-only">Tap patterns</caption>
+        <caption className="sr-only">Swipe directions</caption>
         <thead>
           <tr className="border-b border-line text-left text-muted">
             <th className="py-1.5 font-normal">Over the sensor</th>
@@ -146,9 +146,9 @@ function TapRulesCard() {
         </tbody>
       </table>
       <p className="mt-3 text-xs text-muted">
-        A tap is a hand coming within a few centimetres and leaving within 0.6 s; taps less than 0.7 s apart count
-        together; a still hand for 1.8 s is a hold. A trained Edge Impulse tap model is planned and the data logger
-        for it is ready.
+        A hand passing over the sensor within about 10 cm is read as left, right, up or down. The earlier tap-count
+        rules are still in the firmware as a fallback build, and the data logger for a trained Edge Impulse tap model
+        is ready.
       </p>
     </article>
   );
@@ -255,7 +255,7 @@ export default function AboutPage() {
         </table>
         <div className="mt-6 grid gap-4 md:grid-cols-2">
           <VoiceModelCard />
-          <TapRulesCard />
+          <SwipeCard />
         </div>
         <table className="mt-6 w-full rounded-card border border-line bg-surface text-left">
           <caption className="p-3 text-left text-sm font-semibold uppercase tracking-[0.12em] text-muted">

@@ -1,9 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useReducer, useRef } from "react";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import type { DestinationCode } from "./destinations";
+import { describeGestureEvent, type GestureFeedback } from "./gesture-feedback";
 import {
   acceptsBoardSelect,
+  DETECTED_SHOW_MS,
   initialKioskState,
   kioskReducer,
   STEP_TIMEOUT_MS,
@@ -11,12 +13,18 @@ import {
   type KioskEvent,
   type KioskState,
 } from "./kiosk-machine";
-import type { BoardMessage, KioskCommand } from "./protocol";
+import { parseBoardModes, parseGestureLog, type BoardGestureMode, type BoardMessage, type KioskCommand } from "./protocol";
 import { createToken, findWaitingToken, logSelection } from "./rpc";
 import { getSupabase, STOP_ID } from "./supabase";
 import { useBoard } from "./use-board";
 
 const CARD_LOOKUP_TIMEOUT_MS = 3000;
+/** How long a live gesture event stays on the listening screen (ms). */
+const GESTURE_FEEDBACK_MS = 2500;
+
+export interface LiveGesture extends GestureFeedback {
+  id: number;
+}
 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return Promise.race([
@@ -33,6 +41,10 @@ export function useKiosk({ mockMode }: { mockMode: boolean }) {
   const busy = useRef(false);
   // The board is created after transition(), so commands go through a ref.
   const sendRef = useRef<(command: KioskCommand) => void>(() => {});
+  // Swipes unless the board's connect line says it runs the tap detector or tap model.
+  const [gestureMode, setGestureMode] = useState<BoardGestureMode>("swipe");
+  const [liveGesture, setLiveGesture] = useState<LiveGesture | null>(null);
+  const gestureId = useRef(0);
 
   /** Run one event through the reducer, then its board commands and selection log. */
   const transition = useCallback((event: KioskEvent) => {
@@ -60,6 +72,15 @@ export function useKiosk({ mockMode }: { mockMode: boolean }) {
 
   const handleBoardMessage = useCallback(
     (message: BoardMessage) => {
+      if (message.type === "LOG") {
+        const modes = parseBoardModes(message.text);
+        if (modes) setGestureMode(modes.gesture);
+        const gesture = parseGestureLog(message.text);
+        if (gesture && stateRef.current.step === "listening") {
+          setLiveGesture({ ...describeGestureEvent(gesture), id: gestureId.current++ });
+        }
+        return;
+      }
       if (message.type !== "SELECT") return;
       if (!acceptsBoardSelect(stateRef.current)) return "kiosk is not listening";
       transition({
@@ -84,6 +105,20 @@ export function useKiosk({ mockMode }: { mockMode: boolean }) {
     const id = setTimeout(() => transition({ type: "TIMEOUT" }), ms);
     return () => clearTimeout(id);
   }, [state, transition]);
+
+  // A recognised gesture shows briefly, then the confirm step.
+  useEffect(() => {
+    if (state.step !== "detected") return;
+    const id = setTimeout(() => transition({ type: "DETECTED_SHOWN" }), DETECTED_SHOW_MS);
+    return () => clearTimeout(id);
+  }, [state, transition]);
+
+  // Live gesture feedback fades after a moment and never outlives the listening step.
+  useEffect(() => {
+    if (!liveGesture) return;
+    const id = setTimeout(() => setLiveGesture(null), GESTURE_FEEDBACK_MS);
+    return () => clearTimeout(id);
+  }, [liveGesture]);
 
   const tapCard = useCallback(
     async (cardId: string) => {
@@ -149,5 +184,15 @@ export function useKiosk({ mockMode }: { mockMode: boolean }) {
   const change = useCallback(() => transition({ type: "CHANGE" }), [transition]);
   const cancel = useCallback(() => transition({ type: "CANCEL" }), [transition]);
 
-  return { state, board, tapCard, selectManually, confirm, change, cancel };
+  return {
+    state,
+    board,
+    gestureMode,
+    liveGesture: state.step === "listening" ? liveGesture : null,
+    tapCard,
+    selectManually,
+    confirm,
+    change,
+    cancel,
+  };
 }

@@ -219,7 +219,7 @@ export const FEATURES_TO_BENEFITS: readonly [string, string][] = [
 
 export const FLOW_STEPS = [
   { n: 1, title: "Tap card", detail: "Tap&Go; simulated reader in the prototype" },
-  { n: 2, title: "Say the stop or tap a gesture", detail: "Voice or taps over the sensor" },
+  { n: 2, title: "Say the stop or swipe", detail: "Voice or a swipe over the sensor" },
   { n: 3, title: "Arduino recognises it", detail: "On-device, no internet" },
   { n: 4, title: "Confirm, get a number", detail: "Fair queue ticket, e.g. R3-014" },
   { n: 5, title: "HQ releases the bus", detail: "Kiosk shows the live ETA" },

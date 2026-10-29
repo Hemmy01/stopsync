@@ -23,6 +23,8 @@ export type KioskState =
   | { step: "idle" }
   | { step: "checking"; cardId: string }
   | { step: "listening"; cardId: string }
+  /** A gesture was recognised: show it briefly ("→ Downtown") before asking to confirm. */
+  | { step: "detected"; cardId: string; selection: Selection }
   | { step: "confirm"; cardId: string; selection: Selection; error?: string }
   | { step: "submitting"; cardId: string; selection: Selection }
   | { step: "ticket"; cardId: string; ticket: Ticket }
@@ -35,6 +37,7 @@ export type KioskEvent =
   | { type: "CARD_CLEAR" }
   | { type: "CARD_ALREADY_QUEUED"; code: string; destination: string }
   | { type: "SELECTED"; selection: Selection }
+  | { type: "DETECTED_SHOWN" }
   | { type: "CONFIRM" }
   | { type: "CHANGE" }
   | { type: "TOKEN_CREATED"; ticket: Ticket }
@@ -53,9 +56,12 @@ export const STEP_TIMEOUT_MS: Partial<Record<KioskStep, number>> = {
   duplicate: 12_000,
 };
 
+/** How long the detected gesture stays on screen before the confirm step (ms). */
+export const DETECTED_SHOW_MS = 1200;
+
 /** Steps where a timeout or cancel must tell the board to stop listening. */
 export function timeoutSendsCancel(step: KioskStep): boolean {
-  return step === "listening" || step === "confirm";
+  return step === "listening" || step === "detected" || step === "confirm";
 }
 
 /** The board may only choose a destination while the kiosk is listening. */
@@ -91,7 +97,14 @@ export function kioskReducer(state: KioskState, event: KioskEvent): KioskState {
 
     case "SELECTED":
       if (state.step !== "listening" || !isDestinationCode(event.selection.code)) return state;
-      return { step: "confirm", cardId: state.cardId, selection: event.selection };
+      return {
+        step: event.selection.method === "gesture" ? "detected" : "confirm",
+        cardId: state.cardId,
+        selection: event.selection,
+      };
+
+    case "DETECTED_SHOWN":
+      return state.step === "detected" ? { step: "confirm", cardId: state.cardId, selection: state.selection } : state;
 
     case "CONFIRM":
       return state.step === "confirm"
@@ -174,7 +187,7 @@ export function transitionEffects(prev: KioskState, event: KioskEvent, next: Kio
     case "TIMEOUT":
     case "CANCEL": {
       const commands: KioskCommand[] = timeoutSendsCancel(prev.step) ? [{ type: "CANCEL" }] : [];
-      if (prev.step !== "confirm") return { commands };
+      if (prev.step !== "confirm" && prev.step !== "detected") return { commands };
       const outcome = event.type === "TIMEOUT" ? "timeout" : "cancelled";
       return { commands, outcome: { selection: prev.selection, outcome, tokenCode: null } };
     }

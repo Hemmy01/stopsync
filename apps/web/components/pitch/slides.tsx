@@ -242,7 +242,7 @@ export const SLIDES: readonly Slide[] = [
     section: "Tech",
     speaker: "Emmanuel",
     notes: [
-      "Walk the five steps. In the prototype the card reader is simulated on screen; the voice and taps are real.",
+      "Walk the five steps. In the prototype the card reader is simulated on screen; the voice and swipes are real.",
       "Recognition happens on the Arduino itself, not in the cloud.",
       "The browser is only a gateway; the rules live in the cloud database.",
     ],

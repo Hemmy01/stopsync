@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   DESTINATIONS,
-  NON_SELECTING_GESTURE_LABELS,
+  NON_SELECTING_TAP_LABELS,
   NON_SELECTING_VOICE_LABELS,
 } from "@/lib/destinations";
 import { formatAccuracy, headlineAccuracy, MODEL_STATUS_LABEL, MODELS, type ModelInfo } from "@/lib/models";
@@ -15,9 +15,9 @@ describe("content/models.json", () => {
     );
   });
 
-  it("lists exactly the gesture labels the firmware expects", () => {
+  it("lists exactly the tap labels the firmware expects", () => {
     expect(sorted(MODELS.gesture.labels)).toEqual(
-      sorted([...DESTINATIONS.map((d) => d.gestureLabel), ...NON_SELECTING_GESTURE_LABELS]),
+      sorted([...DESTINATIONS.map((d) => d.tapLabel), ...NON_SELECTING_TAP_LABELS]),
     );
   });
 

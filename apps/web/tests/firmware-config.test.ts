@@ -13,18 +13,20 @@ interface FirmwareDestination {
   route: string;
   voiceLabel: string;
   gestureLabel: string;
+  tapLabel: string;
 }
 
-/** Rows of the DESTINATIONS[] table: { "REM", "R2", "remera", "one_tap", r, g, b }. */
+/** Rows of the DESTINATIONS[] table: { "REM", "R2", "remera", "swipe_left", "one_tap", r, g, b }. */
 export function parseFirmwareDestinations(source: string): FirmwareDestination[] {
   const table = source.match(/DESTINATIONS\[\]\s*=\s*\{([\s\S]*?)\n\};/);
   if (!table) throw new Error("DESTINATIONS[] table not found in config.h");
-  const row = /\{\s*"([^"]+)",\s*"([^"]+)",\s*"([^"]+)",\s*"([^"]+)",\s*\d+,\s*\d+,\s*\d+\s*\}/g;
-  return [...table[1].matchAll(row)].map(([, code, route, voiceLabel, gestureLabel]) => ({
+  const row = /\{\s*"([^"]+)",\s*"([^"]+)",\s*"([^"]+)",\s*"([^"]+)",\s*"([^"]+)",\s*\d+,\s*\d+,\s*\d+\s*\}/g;
+  return [...table[1].matchAll(row)].map(([, code, route, voiceLabel, gestureLabel, tapLabel]) => ({
     code,
     route,
     voiceLabel,
     gestureLabel,
+    tapLabel,
   }));
 }
 
@@ -42,6 +44,7 @@ describe("firmware config.h ↔ destinations.ts", () => {
       route: d.route,
       voiceLabel: d.voiceLabel,
       gestureLabel: d.gestureLabel,
+      tapLabel: d.tapLabel,
     });
   });
 
