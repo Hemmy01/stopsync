@@ -140,8 +140,8 @@ Everything in the database comes from `supabase/migrations/` and `supabase/seed.
 | `stops` | The kiosk (`STOP-01`), the route terminals `STOP-02`…`STOP-06` and stops along the routes `STOP-07`…`STOP-17` |
 | `routes_stops` · `terminals` | Each route's stops in order with distance from its terminal · terminal location and departure radius (150 m) |
 | `destinations` | NYA Nyabugogo R1 · REM Remera R2 · KIM Kimironko R3 · DTN Downtown R4, with voice/gesture labels |
-| `queue_tokens` | Queue numbers and their status (`waiting` / `boarded` / `expired`) |
-| `buses` · `bus_events` | 2 buses per route (status, GPS, ETA, last/next stop, stops and distance left) · released / departed / arrived / reset history |
+| `queue_tokens` | Queue numbers and their status (`waiting` / `boarded` / `completed` / `expired`), and the bus boarded |
+| `buses` · `bus_events` | 2 buses per route (status, GPS, ETA, last/next stop, stops and distance left, seats/standing/occupancy) · released / departed / arrived / completed / occupancy history |
 | `bus_positions` | GPS history (speed, accuracy); rows older than 24 h are deleted hourly by pg_cron |
 | `dispatch_decisions` | Release / hold recommendations and HQ decisions |
 | `selection_events` | Every board/screen choice and its outcome (confirmed / changed / cancelled / timeout) |
@@ -149,7 +149,8 @@ Everything in the database comes from `supabase/migrations/` and `supabase/seed.
 | `model_insights_today` (view) | Per method today: selections, confirmation rate, average confidence |
 
 Functions: `create_token`, `run_dispatch` (every minute via **pg_cron**), `approve_decision`,
-`dismiss_decision`, `update_bus_location`, `mark_bus_arrived`, `reset_bus`, `log_selection`, `reset_demo`.
+`dismiss_decision`, `update_bus_location`, `mark_bus_arrived`, `complete_trip`, `adjust_occupancy`,
+`reset_bus`, `log_selection`, `reset_demo`.
 
 **Live tracking.** Each GPS fix from `/bus` (`update_bus_location`) is stored in `bus_positions`, then
 projected onto the bus's route: that gives the last stop passed, the next stop, stops remaining
@@ -165,6 +166,16 @@ releases that bus, GPS sharing starts by itself; it stops by itself when the bus
 end of its route (the kiosk). While tracking, the page shows **Tracking on** and keeps the screen
 awake (Screen Wake Lock API). Phones pause location for hidden pages and locked screens, so the
 page tells the driver how long tracking was lost and how to unblock location if it was refused.
+
+**Seats and occupancy.** Every bus has 40 seats + 30 standing places and an `occupancy` count.
+Boarding at the kiosk (`mark_bus_arrived`) takes at most the bus's free places and adds them to
+`occupancy`; those tickets remember the bus. Riders get off at the end of the line, back at the
+route's terminal: GPS inside the terminal radius, the driver's **Back at terminal** or HQ's
+**Reset bus** calls `complete_trip`, which marks their tickets `completed` and lowers occupancy.
+The driver corrects the count with − / + (`adjust_occupancy`, logged as an `occupancy` event).
+Dispatch uses free places: load = waiting passengers the buses already on the way can't take
+÷ free places on the next bus, so a nearly full bus on the way can trigger a second release.
+Future: Tap&Go validator taps or door counters for exact counts.
 
 > **Production: a fixed GPS tracker (AVL) in each bus.** A phone page is a prototype stand-in:
 > it depends on the driver's phone, battery and an open browser tab. A real deployment would
