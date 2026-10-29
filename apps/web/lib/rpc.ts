@@ -106,8 +106,22 @@ export const resetBus = (c: StopSyncClient, busId: string) => action(c.rpc("rese
 export const markBusArrived = (c: StopSyncClient, busId: string, source: "dashboard" | "gps" | "manual") =>
   action(c.rpc("mark_bus_arrived", { p_bus: busId, p_source: source }));
 
-export const updateBusLocation = (c: StopSyncClient, busId: string, lat: number, lng: number) =>
-  action(c.rpc("update_bus_location", { p_bus: busId, p_lat: lat, p_lng: lng }));
+/** Speed (m/s) and accuracy (m) are stored in bus_positions; the phone may not know its speed. */
+export const updateBusLocation = (
+  c: StopSyncClient,
+  busId: string,
+  coords: { lat: number; lng: number; speed: number | null; accuracy: number | null },
+) =>
+  action(
+    c.rpc("update_bus_location", {
+      p_bus: busId,
+      p_lat: coords.lat,
+      p_lng: coords.lng,
+      // The generated types mark these non-null; SQL takes null for "unknown".
+      p_speed: coords.speed as number,
+      p_accuracy: coords.accuracy as number,
+    }),
+  );
 
 export async function runDispatch(c: StopSyncClient): Promise<ActionResult> {
   const { error } = await c.rpc("run_dispatch");
