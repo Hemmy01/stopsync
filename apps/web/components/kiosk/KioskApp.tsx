@@ -9,6 +9,7 @@ import { STEP_TIMEOUT_MS } from "@/lib/kiosk-machine";
 import { STOP_ID } from "@/lib/supabase";
 import type { SerialConnection } from "@/lib/use-board";
 import { useKiosk } from "@/lib/use-kiosk";
+import { useCancelReasons } from "@/lib/use-cancel-reasons";
 import { useLiveNetwork } from "@/lib/use-live-network";
 import { useRoutes } from "@/lib/use-routes";
 import { useStopName } from "@/lib/use-stop";
@@ -22,6 +23,7 @@ import { KioskTopBar } from "./KioskTopBar";
 import { ListeningStage } from "./ListeningStage";
 import { NowBoarding } from "./NowBoarding";
 import { RouteStrip } from "./RouteStrip";
+import { CancelConfirmStage, CancelledStage, CancelReasonStage } from "./CancelStages";
 import { TicketStage } from "./TicketStage";
 
 const noopSubscribe = () => () => {};
@@ -102,9 +104,23 @@ export function KioskApp() {
   const drawerOpen = drawerToggle ?? mockParam;
   const mockMode = mockParam || drawerOpen;
 
-  const { state, board, gestureMode, liveGesture, tapCard, selectManually, confirm, change, cancel } = useKiosk({
-    mockMode,
-  });
+  const {
+    state,
+    board,
+    gestureMode,
+    liveGesture,
+    tapCard,
+    selectManually,
+    confirm,
+    change,
+    cancel,
+    startCancel,
+    chooseReason,
+    keepPlace,
+    confirmCancel,
+  } = useKiosk({ mockMode });
+  const cancelReasons = useCancelReasons();
+  const reasonLabel = (code: string) => cancelReasons.reasons.find((r) => r.code === code)?.label ?? code;
   const network = useLiveNetwork();
   const { routes } = useRoutes();
   const stopName = useStopName(STOP_ID);
@@ -212,9 +228,37 @@ export function KioskApp() {
               subheading="One ticket per card. Here's the one you have."
               code={state.code}
               {...ticketProps(state.code, state.destination)}
-              timeoutMs={STEP_TIMEOUT_MS.duplicate ?? 12_000}
+              timeoutMs={STEP_TIMEOUT_MS.duplicate ?? 20_000}
               onDone={cancel}
+              onCancelPlace={findTicket(network.tokens, state.code)?.status === "boarded" ? undefined : startCancel}
             />
+          )}
+
+          {state.step === "cancel_reason" && (
+            <CancelReasonStage
+              code={state.code}
+              destination={state.destination}
+              reasons={cancelReasons.reasons}
+              error={cancelReasons.error}
+              onChoose={chooseReason}
+              onKeep={keepPlace}
+            />
+          )}
+
+          {(state.step === "cancel_confirm" || state.step === "cancelling") && (
+            <CancelConfirmStage
+              code={state.code}
+              destination={state.destination}
+              reasonLabel={reasonLabel(state.reason)}
+              pending={state.step === "cancelling"}
+              error={state.step === "cancel_confirm" ? state.error : undefined}
+              onConfirm={confirmCancel}
+              onKeep={keepPlace}
+            />
+          )}
+
+          {state.step === "cancelled" && (
+            <CancelledStage code={state.code} destination={state.destination} onDone={cancel} />
           )}
         </div>
       </main>
