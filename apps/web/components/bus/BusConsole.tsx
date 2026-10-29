@@ -1,18 +1,23 @@
 import type { ComponentProps } from "react";
-import { MapPin } from "lucide-react";
+import { Flag, MapPin } from "lucide-react";
 import { Button } from "@/components/Button";
 import { RouteBadge } from "@/components/RouteBadge";
 import type { Bus } from "@/lib/departures";
 import { getDestination } from "@/lib/destinations";
 import { BUS_STATUS_LABEL } from "./labels";
+import { OccupancyPanel } from "./OccupancyPanel";
 import { TrackingPanel } from "./TrackingPanel";
 
 interface BusConsoleProps {
   bus: Bus;
   /** Everything the tracking panel needs besides the bus and stop name. */
   tracking: Omit<ComponentProps<typeof TrackingPanel>, "bus" | "stopName">;
+  occupancy: Omit<ComponentProps<typeof OccupancyPanel>, "bus">;
   onArrived: () => void;
   arriving: boolean;
+  /** After boarding: the bus is back at its terminal and everyone gets off. */
+  onBackAtTerminal: () => void;
+  completing: boolean;
   arrivalMessage: string | null;
   arrivalError: string | undefined;
   stopName: string;
@@ -40,8 +45,11 @@ function StatusLine({ bus }: { bus: Bus }) {
 export function BusConsole({
   bus,
   tracking,
+  occupancy,
   onArrived,
   arriving,
+  onBackAtTerminal,
+  completing,
   arrivalMessage,
   arrivalError,
   stopName,
@@ -65,19 +73,34 @@ export function BusConsole({
 
       <TrackingPanel bus={bus} stopName={stopName} {...tracking} />
 
+      <OccupancyPanel bus={bus} {...occupancy} />
+
       <section>
-        <Button
-          variant="secondary"
-          size="xl"
-          className="w-full border-2 border-ink"
-          onClick={onArrived}
-          pending={arriving}
-          pendingLabel="Marking arrived…"
-          disabled={bus.status === "arrived"}
-          icon={<MapPin aria-hidden className="h-6 w-6" />}
-        >
-          {bus.status === "arrived" ? "Arrived" : "I've arrived"}
-        </Button>
+        {bus.status === "arrived" ? (
+          <Button
+            variant="secondary"
+            size="xl"
+            className="w-full border-2 border-ink"
+            onClick={onBackAtTerminal}
+            pending={completing}
+            pendingLabel="Ending trip…"
+            icon={<Flag aria-hidden className="h-6 w-6" />}
+          >
+            Back at terminal
+          </Button>
+        ) : (
+          <Button
+            variant="secondary"
+            size="xl"
+            className="w-full border-2 border-ink"
+            onClick={onArrived}
+            pending={arriving}
+            pendingLabel="Marking arrived…"
+            icon={<MapPin aria-hidden className="h-6 w-6" />}
+          >
+            I&apos;ve arrived
+          </Button>
+        )}
         {arrivalMessage ? (
           <p role="status" className="mt-2 text-center font-semibold text-accent">
             {arrivalMessage}
@@ -89,7 +112,9 @@ export function BusConsole({
           </p>
         ) : null}
         {bus.status === "arrived" ? (
-          <p className="mt-2 text-center text-sm text-muted">HQ resets the bus when it heads back to the terminal.</p>
+          <p className="mt-2 text-center text-sm text-muted">
+            Riders get off at the terminal. Tap Back at terminal there (or HQ resets the bus).
+          </p>
         ) : null}
       </section>
     </div>
