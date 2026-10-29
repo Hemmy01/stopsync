@@ -117,8 +117,16 @@ The kiosk debug drawer (press **D**) shows these as small bars. Turn it off agai
 
 ## Swipes (`GESTURE_SWIPE`, default)
 
-The APDS9960 has its own gesture engine: four photodiodes see a hand pass and report left, right,
-up or down. No ML, so the confidence is always 1.00.
+The APDS9960 has its own gesture engine: four photodiodes (up, down, left, right) record a hand
+passing into a FIFO. No ML, so the confidence is always 1.00.
+
+We decode that FIFO ourselves (`gestures.cpp`) instead of using `APDS.readGesture()`. The library
+checks left, right, down, up in that order, so any vertical wobble overrode a sideways swipe: on
+our board left/right swipes came out as down/up. Our decoder compares how the up–down and
+right–left balance changed between the hand arriving and leaving, and the bigger change wins.
+Each event carries those numbers, e.g. `LOG,gesture=swipe_left,dx=-64,dy=12`; `early` (within
+`SWIPE_SETTLE_MS` of START, usually the hand coming back from the last try) and `unclear` (too
+little movement) never select.
 
 | Swipe | Selects |
 |---|---|
@@ -139,8 +147,16 @@ monitor or the kiosk, swipe left as a passenger would, and read `LOG,gesture=swi
 | `swipe_right` | `SWIPE_FLIP_X 1` |
 | `swipe_up` or `swipe_down` | `SWIPE_SWAP_AXES 1`, re-upload, then check left and up again (add `SWIPE_FLIP_X` / `SWIPE_FLIP_Y` as needed) |
 
-Order of operations: swap first, then flip X, then flip Y. `SWIPE_SENSITIVITY` (1–100, default 80):
-raise it if swipes are missed, lower it if a hand moving away counts as a swipe.
+Order of operations: swap first, then flip X, then flip Y. Our kiosk board, as mounted for the demo, needs
+`SWIPE_SWAP_AXES 1` + `SWIPE_FLIP_X 1` (the defaults in `config.h`); a board mounted differently
+will need other values.
+
+| Setting | Default | Change it when |
+|---|---|---|
+| `SWIPE_MIN_DELTA` | 20 | real swipes log `unclear` (lower it) or a hand moving away selects (raise it) |
+| `SWIPE_X_GAIN_PCT` | 100 | one axis keeps losing to the other: compare `dx`/`dy` in the logs. Re-measure after moving the board: the imbalance we first saw came from the arm's arc in one mounting, not the sensor |
+| `SWIPE_SETTLE_MS` | 400 | `early` shows up for real swipes (lower it) |
+| `SWIPE_PRESENCE` | 30 | rarely; the "no hand" level for all four photodiodes |
 
 Measure it: `node firmware/scripts/gesture-trials.mjs --port <port> --label after`
 (see `ml/results/gesture-trials.md`).

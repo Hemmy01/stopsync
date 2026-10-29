@@ -12,7 +12,8 @@ export interface GestureFeedback {
   code: DestinationCode | null;
 }
 
-export function describeGestureEvent({ event, details }: GestureLogEvent): GestureFeedback {
+/** null for events a passenger shouldn't see ("early": the hand coming back from the last try). */
+export function describeGestureEvent({ event, details }: GestureLogEvent): GestureFeedback | null {
   const swipe = DESTINATIONS.find((d) => d.gestureLabel === event);
   if (swipe) {
     return { text: swipe.gestureHint, direction: swipeDirection(swipe.gestureLabel), code: swipe.code };
@@ -23,6 +24,10 @@ export function describeGestureEvent({ event, details }: GestureLogEvent): Gestu
   switch (event) {
     case "tap":
       return { text: details.count ? `Tap ${details.count}` : "Tap", direction: null, code: null };
+    case "early":
+      return null;
+    case "unclear":
+      return { text: "Not clear, try again", direction: null, code: null };
     case "slow_press":
       return { text: "Too slow for a tap", direction: null, code: null };
     case "ignored":

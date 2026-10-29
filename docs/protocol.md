@@ -69,7 +69,7 @@ LOG,gesture=swipe_right
 | `LOG,voice=model,gesture=swipe,fw=0.3.0` | Sent right after `HELLO`: build modes (voice `model`/`off`; gesture `swipe`/`rule`/`model`/`off`) and firmware version. The kiosk shows swipe hints for `swipe` and tap hints for `rule`/`model`. |
 | `LOG,scores,downtown=0.02,kimironko=0.01,...` | Every voice label's score, once per model window while listening (only with `DEBUG_SCORES 1`). The drawer shows them as bars. |
 | `LOG,voice_overrun` | The voice model fell behind the microphone (see firmware/README.md, Troubleshooting) |
-| `LOG,gesture=<event>[,key=value…]` | Every gesture event while listening; the LED blinks once for each. Swipe build: `swipe_left`, `swipe_right`, `swipe_up`, `swipe_down`. Tap build: `tap,ms=180,count=1`, `one_tap`, `two_taps`, `three_taps`, `hold`, `slow_press,ms=900`, `ignored,taps=4`. The kiosk shows the latest one live ("Sensor saw ← Swipe left"). |
+| `LOG,gesture=<event>[,key=value…]` | Every gesture event while listening; the LED blinks once for each. Swipe build: `swipe_left,dx=-64,dy=12` (also `swipe_right`, `swipe_up`, `swipe_down`; dx/dy are the measured movement), `unclear,dx=…,dy=…` (too little movement), `early,dx=…,dy=…` (within 0.4 s of `START`, ignored). Tap build: `tap,ms=180,count=1`, `one_tap`, `two_taps`, `three_taps`, `hold`, `slow_press,ms=900`, `ignored,taps=4`. The kiosk shows the latest one live ("Sensor saw ← Swipe left"). |
 | `LOG,gesture=<error text>` | A gesture sensor problem at connect, e.g. `gesture=APDS9960 not found` (contains spaces, so it's never mistaken for an event) |
 | `LOG,timeout=listening` · `LOG,timeout=wait_ack` | The board's safety timeouts fired |
 | `LOG,ignored=<line>` | The board received a line it doesn't understand |

@@ -76,8 +76,9 @@ export function useKiosk({ mockMode }: { mockMode: boolean }) {
         const modes = parseBoardModes(message.text);
         if (modes) setGestureMode(modes.gesture);
         const gesture = parseGestureLog(message.text);
-        if (gesture && stateRef.current.step === "listening") {
-          setLiveGesture({ ...describeGestureEvent(gesture), id: gestureId.current++ });
+        const feedback = gesture && describeGestureEvent(gesture);
+        if (feedback && stateRef.current.step === "listening") {
+          setLiveGesture({ ...feedback, id: gestureId.current++ });
         }
         return;
       }

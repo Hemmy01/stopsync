@@ -169,6 +169,10 @@ describe("parseGestureLog", () => {
   it("reads swipe and tap events", () => {
     expect(parseGestureLog("gesture=swipe_left")).toEqual({ event: "swipe_left", details: {} });
     expect(parseGestureLog("gesture=tap,ms=180,count=2")).toEqual({ event: "tap", details: { ms: "180", count: "2" } });
+    expect(parseGestureLog("gesture=swipe_right,dx=-15,dy=59")).toEqual({
+      event: "swipe_right",
+      details: { dx: "-15", dy: "59" },
+    });
   });
 
   it("ignores sensor errors, other LOG lines and malformed details", () => {

@@ -13,8 +13,14 @@ describe("describeGestureEvent", () => {
   it("describes tap-rule events", () => {
     expect(describeGestureEvent({ event: "tap", details: { ms: "180", count: "2" } })).toEqual({ text: "Tap 2", direction: null, code: null });
     expect(describeGestureEvent({ event: "two_taps", details: {} })).toEqual({ text: "Tap twice", direction: null, code: "DTN" });
-    expect(describeGestureEvent({ event: "slow_press", details: {} }).code).toBeNull();
-    expect(describeGestureEvent({ event: "something_new", details: {} }).text).toBe("something new");
+    expect(describeGestureEvent({ event: "slow_press", details: {} })?.code).toBeNull();
+    expect(describeGestureEvent({ event: "something_new", details: {} })?.text).toBe("something new");
+  });
+
+  it("reads swipes with measurements, hides early ones and words unclear ones", () => {
+    expect(describeGestureEvent({ event: "swipe_left", details: { dx: "-64", dy: "12" } })?.code).toBe("REM");
+    expect(describeGestureEvent({ event: "early", details: { dx: "14", dy: "-63" } })).toBeNull();
+    expect(describeGestureEvent({ event: "unclear", details: { dx: "-5", dy: "-2" } })?.text).toBe("Not clear, try again");
   });
 });
 
