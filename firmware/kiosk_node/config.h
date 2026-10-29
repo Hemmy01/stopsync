@@ -13,12 +13,13 @@
 #define GESTURE_OFF   0
 #define GESTURE_RULE  1
 #define GESTURE_MODEL 2
+#define GESTURE_SWIPE 3
 
 #ifndef VOICE_MODE
 #define VOICE_MODE   VOICE_MODEL    // VOICE_MODEL | VOICE_OFF
 #endif
 #ifndef GESTURE_MODE
-#define GESTURE_MODE GESTURE_RULE   // GESTURE_MODEL | GESTURE_RULE | GESTURE_OFF
+#define GESTURE_MODE GESTURE_SWIPE  // GESTURE_SWIPE | GESTURE_MODEL | GESTURE_RULE | GESTURE_OFF
 #endif
 
 // How the Edge Impulse libraries are packaged (only matters with a *_MODEL mode).
@@ -54,12 +55,14 @@ or GESTURE_RULE with the voice model, or two builds. See firmware/README.md."
 // ---------------------------------------------------------------------------
 #define STOP_ID   "STOP-01"
 #define BAUD_RATE 115200
-#define FW_VERSION "0.2.0"           // reported on connect: LOG,voice=…,gesture=…,fw=<version>
+#define FW_VERSION "0.3.0"           // reported on connect: LOG,voice=…,gesture=…,fw=<version>
 #define SERIAL_WAIT_MS 2000          // boot waits at most this long for a host, then runs anyway
 
 // ---------------------------------------------------------------------------
 // Destinations: must match apps/web/lib/destinations.ts and supabase/seed.sql
 // (apps/web/tests/firmware-config.test.ts parses the table below).
+// gestureLabel is the swipe (GESTURE_SWIPE); tapLabel is the tap pattern used by
+// GESTURE_RULE and the Edge Impulse tap model (GESTURE_MODEL).
 // LED colour is r, g, b from 0 to 255; the RGB LED is active LOW.
 // ---------------------------------------------------------------------------
 struct Destination {
@@ -67,18 +70,19 @@ struct Destination {
   const char* route;
   const char* voiceLabel;
   const char* gestureLabel;
+  const char* tapLabel;
   uint8_t r, g, b;
 };
 
 static const Destination DESTINATIONS[] = {
-  // code   route  voice label   gesture label   LED r, g, b
-  { "REM", "R2",  "remera",     "one_tap",      0,   255, 0   },  // green
-  { "DTN", "R4",  "downtown",   "two_taps",     160, 0,   255 },  // purple
-  { "NYA", "R1",  "nyabugogo",  "three_taps",   0,   0,   255 },  // blue
-  { "KIM", "R3",  "kimironko",  "hold",         255, 140, 0   },  // yellow
+  // code   route  voice label   gesture label   tap label       LED r, g, b
+  { "REM", "R2",  "remera",     "swipe_left",   "one_tap",      0,   255, 0   },  // green
+  { "DTN", "R4",  "downtown",   "swipe_right",  "two_taps",     160, 0,   255 },  // purple
+  { "NYA", "R1",  "nyabugogo",  "swipe_up",     "three_taps",   0,   0,   255 },  // blue
+  { "KIM", "R3",  "kimironko",  "swipe_down",   "hold",         255, 140, 0   },  // yellow
 };
 static const int DESTINATION_COUNT = sizeof(DESTINATIONS) / sizeof(DESTINATIONS[0]);
-// Labels that never select anything: voice noise, unknown; gesture passing, idle.
+// Labels that never select anything: voice noise, unknown; tap model passing, idle.
 
 // A passenger's choice from either input: index into DESTINATIONS + confidence 0..1.
 struct Choice {
@@ -96,6 +100,13 @@ static inline int destinationForVoiceLabel(const char* label) {
 static inline int destinationForGestureLabel(const char* label) {
   for (int i = 0; i < DESTINATION_COUNT; i++) {
     if (strcmp(label, DESTINATIONS[i].gestureLabel) == 0) return i;
+  }
+  return -1;
+}
+
+static inline int destinationForTapLabel(const char* label) {
+  for (int i = 0; i < DESTINATION_COUNT; i++) {
+    if (strcmp(label, DESTINATIONS[i].tapLabel) == 0) return i;
   }
   return -1;
 }
@@ -121,7 +132,7 @@ static inline int destinationForGestureLabel(const char* label) {
 #ifndef DEBUG_SCORES
 #define DEBUG_SCORES         0
 #endif
-#define GESTURE_THRESHOLD    0.80f
+#define GESTURE_THRESHOLD    0.80f  // tap model (GESTURE_MODEL)
 #define GESTURE_CONSECUTIVE  2
 #define GESTURE_SAMPLE_HZ    20     // prox + clear frames per second (tap_logger uses the same)
 #define GESTURE_WINDOW_FRAMES 60    // 3 s ring buffer
@@ -138,7 +149,33 @@ static inline int destinationForGestureLabel(const char* label) {
 #define TAP_GROUP_GAP_MS    700  // next tap starts within this after the last one = same group
 #define TAP_GROUP_CLOSE_MS  900  // group closes after this long with no tap
 #define HOLD_MS             1800 // near this long = hold
-#define GESTURE_RULE_LOG    1    // 1 = LOG every tap and group (handy for tuning)
+
+// ---------------------------------------------------------------------------
+// Swipes (GESTURE_SWIPE): the APDS9960's own direction engine, no ML.
+// Mount the board, swipe left over it and watch LOG,gesture=swipe_...:
+//   says swipe_right       -> SWIPE_FLIP_X 1
+//   says swipe_up / _down  -> SWIPE_SWAP_AXES 1 (then check the flips again)
+// Applied in this order: swap, then flip X, then flip Y.
+// ---------------------------------------------------------------------------
+#ifndef SWIPE_SWAP_AXES
+#define SWIPE_SWAP_AXES 0        // 1 = board turned 90 degrees: left/right <-> up/down
+#endif
+#ifndef SWIPE_FLIP_X
+#define SWIPE_FLIP_X    0        // 1 = left <-> right
+#endif
+#ifndef SWIPE_FLIP_Y
+#define SWIPE_FLIP_Y    0        // 1 = up <-> down
+#endif
+#define SWIPE_SENSITIVITY 80     // 1..100, library default 80; raise if swipes are missed
+
+// ---------------------------------------------------------------------------
+// Sensor thread: the APDS9960 is read on its own mbed RTOS thread, so voice
+// inference in loop() never delays it. Every gesture event is reported as
+// LOG,gesture=<event> and blinks the LED once.
+// ---------------------------------------------------------------------------
+#define SENSOR_POLL_MS      10    // swipe engine and tap rules poll period
+#define SENSOR_STACK_BYTES  3072
+#define GESTURE_QUEUE_SIZE  8     // events waiting for loop(); extra events are dropped
 
 // ---------------------------------------------------------------------------
 // LED
@@ -146,3 +183,4 @@ static inline int destinationForGestureLabel(const char* label) {
 #define LED_USE_PWM       1     // 0 = on/off only (if analogWrite misbehaves)
 #define LED_BREATHE_MS    2000  // listening: one breath
 #define LED_ACK_PULSE_MS  600   // ACK: short green pulse
+#define LED_BLINK_MS      120   // one white blink per gesture event

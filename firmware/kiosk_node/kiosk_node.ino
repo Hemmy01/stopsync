@@ -1,13 +1,15 @@
 // StopSync kiosk node: Arduino Nano 33 BLE Sense Lite.
-// Listens for a voice keyword or a tap gesture after the kiosk sends START,
+// Listens for a voice keyword or a swipe/tap gesture after the kiosk sends START,
 // and reports the chosen stop over USB serial. Protocol: docs/protocol.md.
 //
 //   IDLE (LED off) --START--> LISTENING (blue breathing)
 //   LISTENING --confident result--> SELECT --> WAIT_ACK (route colour)
 //   WAIT_ACK --ACK--> IDLE (green pulse) · --START--> LISTENING · --CANCEL--> IDLE
 //   Safety timeouts: 25 s LISTENING, 30 s WAIT_ACK. One SELECT per START.
-//   Voice and taps both run while LISTENING; the first confident result wins.
+//   Voice and gestures both run while LISTENING; the first confident result wins.
 //   The microphone runs from boot; the voice model only classifies while LISTENING.
+//   The APDS9960 runs on its own thread (gestures.cpp); every gesture event is
+//   sent as LOG,gesture=<event> and blinks the LED once.
 
 #include "config.h"
 #include "gestures.h"
@@ -21,7 +23,9 @@
 #define VOICE_MODE_NAME "off"
 #endif
 
-#if GESTURE_MODE == GESTURE_MODEL
+#if GESTURE_MODE == GESTURE_SWIPE
+#define GESTURE_MODE_NAME "swipe"
+#elif GESTURE_MODE == GESTURE_MODEL
 #define GESTURE_MODE_NAME "model"
 #elif GESTURE_MODE == GESTURE_RULE
 #define GESTURE_MODE_NAME "rule"
@@ -131,20 +135,34 @@ void loop() {
   // Read the clock after commands: they may have just reset stateSince.
   uint32_t now = millis();
 
+  bool selected = false;
   if (state == State::Listening) {
     Choice choice;
     if (voicePoll(choice)) {
       select(choice, "voice");
-    } else if (gesturesPoll(choice)) {
-      select(choice, "gesture");
-    } else if (now - stateSince >= LISTEN_TIMEOUT_MS) {
-      stopSensing();
-      sendState(false);
-      sendLog("timeout=listening");
-      ledOff();
-      enterIdle();
+      selected = true;
     }
-  } else if (state == State::WaitAck && now - stateSince >= WAIT_ACK_TIMEOUT_MS) {
+  }
+
+  // Gesture events arrive from the sensor thread only while listening.
+  GestureEvent gesture;
+  while (gesturesPoll(gesture)) {
+    sendLog("gesture=%s", gesture.text);
+    ledBlink();
+    if (state == State::Listening && gesture.destination >= 0) {
+      select(Choice{gesture.destination, gesture.confidence}, "gesture");
+      selected = true;
+    }
+  }
+
+  // A select just reset stateSince (after `now`), so no timeout this pass.
+  if (!selected && state == State::Listening && now - stateSince >= LISTEN_TIMEOUT_MS) {
+    stopSensing();
+    sendState(false);
+    sendLog("timeout=listening");
+    ledOff();
+    enterIdle();
+  } else if (!selected && state == State::WaitAck && now - stateSince >= WAIT_ACK_TIMEOUT_MS) {
     sendLog("timeout=wait_ack");
     ledOff();
     enterIdle();

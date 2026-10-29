@@ -8,6 +8,8 @@ static Pattern pattern = Pattern::Off;
 static uint8_t baseR = 0, baseG = 0, baseB = 0;
 static uint32_t patternStart = 0;
 static uint32_t pulseMs = 0;
+static bool blinking = false;
+static uint32_t blinkStart = 0;
 static int lastR = -1, lastG = -1, lastB = -1;
 
 static void writeChannel(pin_size_t pin, uint8_t level, int& last) {
@@ -45,12 +47,24 @@ void ledOff() { set(Pattern::Off, 0, 0, 0); }
 void ledSolid(uint8_t r, uint8_t g, uint8_t b) { set(Pattern::Solid, r, g, b); }
 void ledBreathe(uint8_t r, uint8_t g, uint8_t b) { set(Pattern::Breathe, r, g, b); }
 
+void ledBlink() {
+  blinking = true;
+  blinkStart = millis();
+}
+
 void ledPulse(uint8_t r, uint8_t g, uint8_t b, uint32_t durationMs) {
   set(Pattern::Pulse, r, g, b);
   pulseMs = durationMs;
 }
 
 void ledUpdate(uint32_t nowMs) {
+  if (blinking) {
+    if (nowMs - blinkStart < LED_BLINK_MS) {
+      write(255, 255, 255);
+      return;
+    }
+    blinking = false;
+  }
   switch (pattern) {
     case Pattern::Off:
       write(0, 0, 0);
