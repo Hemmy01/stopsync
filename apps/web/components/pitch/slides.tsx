@@ -3,7 +3,7 @@
 
 import type { ReactNode } from "react";
 import { RouteBadge } from "@/components/RouteBadge";
-import { Wordmark } from "@/components/Wordmark";
+import { HomeLink } from "@/components/HomeLink";
 import { DESTINATIONS } from "@/lib/destinations";
 import { formatAccuracy, MODELS } from "@/lib/models";
 import { PITCH_SECTIONS, type PitchSection } from "@/lib/pitch-nav";
@@ -87,7 +87,7 @@ export const SLIDES: readonly Slide[] = [
     ],
     body: (
       <div className="flex h-full flex-col justify-between px-16 py-14">
-        <Wordmark />
+        <HomeLink />
         <div>
           <h1 className="text-[104px] leading-none">Tap&amp;Select</h1>
           <p className="mt-6 max-w-[900px] text-[34px] leading-snug text-ink">{TAGLINE}</p>
@@ -503,7 +503,7 @@ export const SLIDES: readonly Slide[] = [
     notes: ["Thank the judges in Kinyarwanda and English.", "Invite questions; the demo stays open for follow-ups."],
     body: (
       <div className="flex h-full flex-col justify-between px-16 py-14">
-        <Wordmark />
+        <HomeLink />
         <div>
           <p className="text-[96px] font-bold leading-none font-display">Murakoze. Thank you.</p>
           <p className="mt-8 text-[44px] font-semibold text-muted">Questions?</p>

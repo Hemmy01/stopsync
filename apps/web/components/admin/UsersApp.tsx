@@ -5,7 +5,7 @@ import { useState } from "react";
 import { AccountBadge } from "@/components/auth/AccountBadge";
 import { Banner } from "@/components/Banner";
 import { Button } from "@/components/Button";
-import { Wordmark } from "@/components/Wordmark";
+import { HomeLink } from "@/components/HomeLink";
 import { isRole, ROLE_LABEL, ROLES, type Role } from "@/lib/auth";
 import type { Tables } from "@/lib/database.types";
 import { setUserRole } from "@/lib/rpc";
@@ -114,9 +114,7 @@ export function UsersApp() {
   return (
     <div className="mx-auto min-h-dvh max-w-4xl px-4 pb-12 sm:px-8">
       <header className="flex flex-wrap items-center gap-x-6 gap-y-3 border-b border-line py-4">
-        <Link href="/" aria-label="Tap&Select home">
-          <Wordmark />
-        </Link>
+        <HomeLink />
         <h1 className="text-[28px]">Users</h1>
         <Link href="/dashboard" className="font-semibold text-muted underline-offset-4 hover:text-ink hover:underline">
           Dashboard

@@ -5,16 +5,14 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { Banner } from "@/components/Banner";
 import { Button } from "@/components/Button";
-import { Wordmark } from "@/components/Wordmark";
+import { HomeLink } from "@/components/HomeLink";
 import { canOpen, PAGE_ROLES, ROLE_LABEL, type ProtectedPage } from "@/lib/auth";
 import { AccountProvider, signOut, useAccountState } from "@/lib/use-account";
 
 function Notice({ title, children }: { title: string; children: ReactNode }) {
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-lg flex-col justify-center gap-6 px-4 py-10">
-      <Link href="/" aria-label="Tap&Select home">
-        <Wordmark />
-      </Link>
+      <HomeLink />
       <h1 className="text-[32px] leading-tight">{title}</h1>
       {children}
     </main>

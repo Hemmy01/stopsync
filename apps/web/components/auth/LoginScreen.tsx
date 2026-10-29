@@ -1,12 +1,11 @@
 "use client";
 
 import clsx from "clsx";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 import { Banner } from "@/components/Banner";
 import { Button } from "@/components/Button";
-import { Wordmark } from "@/components/Wordmark";
+import { HomeLink } from "@/components/HomeLink";
 import { DEMO_ROLES, HOME_FOR, isRole, ROLE_LABEL, safeNext, type Role } from "@/lib/auth";
 import { getSupabase } from "@/lib/supabase";
 import { signOut, useAccountState } from "@/lib/use-account";
@@ -119,9 +118,7 @@ export function LoginScreen() {
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-5xl flex-col px-4 py-8 sm:px-8">
       <header className="border-b border-line pb-6">
-        <Link href="/" aria-label="Tap&Select home">
-          <Wordmark />
-        </Link>
+        <HomeLink />
       </header>
 
       <div className={clsx("grid flex-1 gap-10 py-10", DEMO_MODE && "lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]")}>

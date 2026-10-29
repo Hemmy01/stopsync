@@ -1,11 +1,10 @@
 "use client";
 
 import { ArrowLeft } from "lucide-react";
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Banner } from "@/components/Banner";
 import { KigaliClock } from "@/components/KigaliClock";
-import { Wordmark } from "@/components/Wordmark";
+import { HomeLink } from "@/components/HomeLink";
 import { autoTrackingAction, unblockLocationSteps } from "@/lib/auto-tracking";
 import { adjustOccupancy, completeTrip, markBusArrived } from "@/lib/rpc";
 import { useAccount } from "@/lib/use-account";
@@ -116,9 +115,7 @@ export function BusApp() {
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col px-4 pb-10">
       <header className="flex h-16 items-center justify-between border-b border-line">
-        <Link href="/" aria-label="Tap&Select home">
-          <Wordmark />
-        </Link>
+        <HomeLink />
         <div className="flex items-center gap-4">
           <KigaliClock className="text-xl font-medium" />
           <AccountBadge compact />
