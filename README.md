@@ -150,7 +150,7 @@ Everything in the database comes from `supabase/migrations/` and `supabase/seed.
 
 Functions: `create_token`, `run_dispatch` (every minute via **pg_cron**), `approve_decision`,
 `dismiss_decision`, `update_bus_location`, `mark_bus_arrived`, `complete_trip`, `adjust_occupancy`,
-`reset_bus`, `log_selection`, `reset_demo`.
+`reset_bus`, `log_selection`, `reset_demo` (and the internal `board_queue`, `release_for_decision`).
 
 **Live tracking.** Each GPS fix from `/bus` (`update_bus_location`) is stored in `bus_positions`, then
 projected onto the bus's route: that gives the last stop passed, the next stop, stops remaining
@@ -181,6 +181,33 @@ Future: Tap&Go validator taps or door counters for exact counts.
 > it depends on the driver's phone, battery and an open browser tab. A real deployment would
 > fit every bus with an Automatic Vehicle Location unit (GPS + LTE, powered by the bus) that
 > reports to the same `update_bus_location` function, with no driver action at all.
+
+**Automatic queue (FIFO).** Each stop has its own queue per route. When a bus arrives at a stop,
+`board_queue` boards the oldest waiting tickets for its route at that stop, up to its free places
+(seats + standing), under a lock per route and stop so two buses never take the same tickets.
+Everyone else keeps their order, and the kiosk ticket shows its live position. This happens:
+- at the kiosk: GPS inside `arrival_radius_m`, the driver's **I've arrived**, or HQ's **Bus arrived**;
+- along the route: GPS within `arrival_radius_m` of a stop on the bus's route (a released bus also
+  boards at its terminal), which is how the simulator's tickets at `STOP-02`…`STOP-06` are served;
+- for early or unscheduled buses (never released by HQ) the same way.
+
+The kiosk shows a **Now boarding** row ("R2-01 boarding tickets R2-010–R2-045"), and a called
+ticket says "Your bus is here, please board". Dispatch only counts tickets at stops the route
+serves. **Auto-dispatch** (`auto_dispatch` = 1 in Settings, off by default) lets `run_dispatch`
+release a bus by itself when load ≥ `release_load_pct`, at most `max_auto_releases_per_hour` per
+route; past the limit the recommendation waits for HQ as usual.
+
+### SQL scenario tests
+
+```zsh
+supabase/tests/run.sh                                         # every supabase/tests/*_test.sql
+supabase/tests/run.sh --with supabase/migrations/<new>.sql    # try a migration before pushing it
+```
+
+Each test runs inside a transaction against the linked project and **always rolls back**, so it is
+safe on the real database. `fifo_queue_test.sql` checks 27 boarding, dispatch and auto-dispatch
+scenarios; a failure prints the check's name and exits non-zero. (pgTAP needs a local Docker
+database, which this setup doesn't use.)
 
 ### Changing the schema (Danny)
 
