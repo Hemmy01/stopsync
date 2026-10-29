@@ -98,6 +98,10 @@ export interface KioskText {
 
   offlineTitle: string;
   offlineHint: string;
+
+  /** The sound switch's state, read out by screen readers. */
+  soundOn: string;
+  soundOff: string;
 }
 
 const en: KioskText = {
@@ -178,6 +182,9 @@ const en: KioskText = {
 
   offlineTitle: "Can’t reach Tap&Select right now",
   offlineHint: "You can still tap a stop; numbers will be issued when the connection returns.",
+
+  soundOn: "Spoken announcements on",
+  soundOff: "Spoken announcements off",
 };
 
 // ---- Kinyarwanda (draft, needs a native speaker's review) ----
@@ -308,6 +315,9 @@ const rw: KioskText = {
 
   offlineTitle: "Ntidushoboye kugera kuri Tap&Select ubu",
   offlineHint: "Ushobora gukanda aho ugiye; nimero zizatangwa interineti igarutse.",
+
+  soundOn: "Amatangazo avugwa arafunguye",
+  soundOff: "Amatangazo avugwa arafunze",
 };
 
 export const KIOSK_TEXT: Readonly<Record<Lang, KioskText>> = { en, rw };

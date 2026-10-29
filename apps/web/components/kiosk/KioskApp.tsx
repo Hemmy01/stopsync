@@ -1,13 +1,15 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Banner } from "@/components/Banner";
+import { boardingAnnouncement, boardingKey, ticketAnnouncement } from "@/lib/announce";
 import { getDestination } from "@/lib/destinations";
-import { boardingNow, findTicket, queuePosition, ticketStatus } from "@/lib/queue";
+import { boardingNow, findTicket, queuePosition, ticketStatus, type Boarding } from "@/lib/queue";
 import { trackBusFor } from "@/lib/routes";
 import { STEP_TIMEOUT_MS } from "@/lib/kiosk-machine";
 import { STOP_ID } from "@/lib/supabase";
 import type { SerialConnection } from "@/lib/use-board";
+import { useAnnouncer } from "@/lib/use-announcer";
 import { useKiosk } from "@/lib/use-kiosk";
 import { useCancelReasons } from "@/lib/use-cancel-reasons";
 import { useLiveNetwork } from "@/lib/use-live-network";
@@ -24,6 +26,7 @@ import { KioskTopBar } from "./KioskTopBar";
 import { ListeningStage } from "./ListeningStage";
 import { NowBoarding } from "./NowBoarding";
 import { RouteStrip } from "./RouteStrip";
+import { SoundToggle } from "./SoundToggle";
 import { CancelConfirmStage, CancelledStage, CancelReasonStage } from "./CancelStages";
 import { TicketStage } from "./TicketStage";
 
@@ -98,6 +101,43 @@ function BoardBanners({ supported, connection, serialError, noHello, mockMode, o
   return null;
 }
 
+const destinationName = (code: string) => getDestination(code)?.name ?? code;
+
+/**
+ * Reads out each new ticket once, and each new boarding call once. Calls already on the board
+ * when the kiosk opens are not read out.
+ */
+function useAnnouncements(
+  ticket: { code: string; destination: string } | null,
+  boardings: readonly Boarding[],
+  loading: boolean,
+  say: (text: string) => void,
+) {
+  const spokenTicket = useRef<string | null>(null);
+  const seenBoardings = useRef<Set<string> | null>(null);
+
+  useEffect(() => {
+    if (!ticket || spokenTicket.current === ticket.code) return;
+    spokenTicket.current = ticket.code;
+    say(ticketAnnouncement(ticket.code, destinationName(ticket.destination)));
+  }, [ticket, say]);
+
+  useEffect(() => {
+    if (loading) return;
+    const keys = boardings.map(boardingKey);
+    if (seenBoardings.current === null) {
+      seenBoardings.current = new Set(keys);
+      return;
+    }
+    for (const b of boardings) {
+      const key = boardingKey(b);
+      if (seenBoardings.current.has(key)) continue;
+      seenBoardings.current.add(key);
+      say(boardingAnnouncement(b.busId, destinationName(b.destination), b.firstCode, b.lastCode));
+    }
+  }, [boardings, loading, say]);
+}
+
 export function KioskApp() {
   return (
     <KioskTextProvider>
@@ -134,6 +174,9 @@ function KioskScreen() {
   const network = useLiveNetwork();
   const { routes } = useRoutes();
   const stopName = useStopName(STOP_ID);
+  const boardings = boardingNow(network.buses, network.tokens);
+  const announcer = useAnnouncer({ hold: state.step === "listening" || state.step === "detected" });
+  useAnnouncements(state.step === "ticket" ? state.ticket : null, boardings, network.loading, announcer.say);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -167,6 +210,7 @@ function KioskScreen() {
       <KioskTopBar
         stopName={stopName}
         boardStatus={board.status}
+        sound={announcer.supported ? <SoundToggle on={announcer.soundOn} onChange={announcer.setSoundOn} /> : null}
         actions={
           <ConnectBoardControl
             supported={board.serialSupported}
@@ -273,7 +317,7 @@ function KioskScreen() {
         </div>
       </main>
 
-      <NowBoarding boardings={boardingNow(network.buses, network.tokens)} />
+      <NowBoarding boardings={boardings} />
       <DepartureStrip buses={network.buses} waiting={network.waiting} loading={network.loading} />
 
       {drawerOpen ? <DebugDrawer mock={board.mock} log={board.log} onClose={() => setDrawerToggle(false)} /> : null}
