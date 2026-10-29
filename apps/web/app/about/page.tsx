@@ -49,6 +49,7 @@ const REAL = [
     "Seats and occupancy",
     "Counted from tickets: boarding adds, riders get off at the terminal, the driver corrects with − / +. Future: Tap&Go validator taps or door counters for exact counts",
   ],
+  ["Sign-in and roles", "Real: Supabase Auth; kiosk, driver, dispatcher, viewer and admin rights enforced in the database"],
   ["Card tap (RFID)", "Simulated: demo cards on screen"],
   ["Other stops", "Simulator script"],
 ] as const;

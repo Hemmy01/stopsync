@@ -62,7 +62,12 @@ npm run dev                        # http://localhost:3000
 NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon or publishable key>
 NEXT_PUBLIC_STOP_ID=STOP-01
+NEXT_PUBLIC_DEMO_MODE=true          # shows "Demo login as…" on /login
+DEMO_PASSWORD=<the demo accounts' password>   # server-only, ask Danny
 ```
+
+Every screen needs a signed-in account (see [Accounts and roles](#accounts-and-roles)); open
+<http://localhost:3000/login> and use **Demo login as…**.
 
 Use the **anon / publishable** key only; never the `service_role` or secret key. `.env*` files are
 git-ignored; only `.env.example` is committed. The shared Supabase project is already set up.
@@ -237,20 +242,58 @@ npx supabase gen types typescript --linked --schema public > apps/web/lib/databa
    (tables, functions, RLS, Realtime and the pg_cron job).
 4. Copy the project URL and anon key into `apps/web/.env.local`.
 
-### ⚠️ Prototype security
+### Accounts and roles
 
-This prototype has **no authentication**. Every table has an open RLS policy
-(`using (true) with check (true)`) for `anon`, and the business functions (including `reset_demo`)
-are `security definer` and callable by `anon`. Anyone with the anon key can read and change data.
-**Before any real use, add authentication and per-role policies** (e.g. only HQ can approve or reset,
-only a driver can move their bus).
+Sign-in is **Supabase Auth (email + password)**. Each user has a row in `profiles` with a role,
+and the database enforces it (migration `20261030090000_user_roles.sql`), whatever the screen shows:
+
+| Role | Opens | Can |
+|---|---|---|
+| `kiosk` | `/kiosk` | `create_token`, `cancel_token`, `log_selection` |
+| `driver` | `/bus` (their bus only) | `update_bus_location`, `adjust_occupancy`, arrive / end the trip: **own bus only** |
+| `dispatcher` | `/dashboard` | approve / dismiss, Bus arrived, Reset bus, Recompute now |
+| `viewer` | `/dashboard` | read only, no buttons |
+| `admin` | everything + `/admin/users` | all of the above, Settings, Reset demo, change roles |
+
+- **Signed out = nothing.** No table can be read and no function called with just the anon key.
+- **New accounts** (Create one on `/login`) start as `viewer`; an admin gives them a role on
+  `/admin/users` (a driver also gets a bus). Admins can't change their own role.
+- **How it's checked:** `has_role()` / `drives_bus()` read `profiles`. Each business function is a
+  thin `public` wrapper that checks the role and calls the original in the `private` schema, which
+  the API can't reach. Calls without a login token (pg_cron, SQL editor, CLI) are trusted, so the
+  every-minute dispatch and `supabase/tests/run.sh` keep working.
+- **Kiosk:** signs in once as the kiosk account and stays signed in (the session is stored and
+  refreshed by the browser). Its account and Sign out are in the debug drawer (press **D**).
+
+**Demo accounts** (create once): Supabase → Authentication → Users → **Add user**, tick **Auto
+confirm**, same password for all five:
+
+| Email | Role |
+|---|---|
+| `admin@tapselect.demo` | admin |
+| `dispatcher@tapselect.demo` | dispatcher |
+| `driver@tapselect.demo` | driver of `R2-01` |
+| `kiosk@tapselect.demo` | kiosk (also used by the simulator) |
+| `viewer@tapselect.demo` | viewer |
+
+They get their roles automatically on creation. Put that password in `DEMO_PASSWORD` and set
+`NEXT_PUBLIC_DEMO_MODE=true` to show **Demo login as…** on `/login`; the panel signs in through
+`/api/demo-login` on the server, so the password never reaches the browser. In Supabase →
+Authentication → Sign In / Providers, keep **Email** on and turn **Confirm email** off so
+sign-ups work without email delivery.
+
+> Demo mode lets anyone with the URL sign in as any role, admin included. Turn it off
+> (`NEXT_PUBLIC_DEMO_MODE=false`) and change the demo password for anything beyond the demo.
+> The service-role key is not used anywhere.
 
 ---
 
 ## Network simulator
 
 `simulator/` adds passengers at `STOP-02`…`STOP-06` so the dashboard shows city-wide demand.
-Node 21+, no dependencies, reads the public values from `apps/web/.env.local`.
+Node 21+, no dependencies, reads `apps/web/.env.local`. It signs in as the **kiosk** account
+(`SIM_EMAIL`, default `kiosk@tapselect.demo`, with `SIM_PASSWORD` or `DEMO_PASSWORD`), so it has
+exactly a kiosk's rights.
 
 ```zsh
 node simulator/simulate.mjs                          # Kigali clock decides peak or off-peak
@@ -277,8 +320,8 @@ Stop it with **Ctrl+C**; it prints how many tickets each stop got.
 
 1. <https://vercel.com/new> → **Import** `Hemmy01/tap-and-select`.
 2. **Root Directory:** `apps/web` (framework preset Next.js, other settings default).
-3. **Environment Variables:** the three `NEXT_PUBLIC_*` values from `apps/web/.env.local`
-   (Production and Preview).
+3. **Environment Variables:** the `NEXT_PUBLIC_*` values from `apps/web/.env.local` and
+   `DEMO_PASSWORD` (Production and Preview).
 4. **Deploy.** Every push to a branch gets a Preview URL; `main` is Production.
 
 The `https://` address is required for Web Serial on the kiosk and GPS on the phone's `/bus` page.
