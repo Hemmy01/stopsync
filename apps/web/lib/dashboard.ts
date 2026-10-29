@@ -91,7 +91,7 @@ export function pendingByDestination(decisions: readonly Decision[]): Record<str
   return result;
 }
 
-export type ActivityKind = "token" | "recommendation" | "approved" | "dismissed" | "released" | "arrived" | "reset";
+export type ActivityKind = "token" | "recommendation" | "approved" | "dismissed" | "released" | "departed" | "arrived" | "reset";
 
 export interface ActivityItem {
   key: string;
@@ -158,13 +158,16 @@ export function buildActivity(
   for (const e of events) {
     const destination = busDest.get(e.bus_id) ?? null;
     const via = e.source === "gps" ? "GPS" : e.source === "manual" ? "driver" : "HQ";
-    const kind: ActivityKind = e.event === "released" ? "released" : e.event === "arrived" ? "arrived" : "reset";
+    const kind: ActivityKind =
+      e.event === "released" || e.event === "departed" || e.event === "arrived" ? e.event : "reset";
     const text =
       kind === "released"
         ? `Bus ${e.bus_id} released${destination ? ` to ${destName(destination)}` : ""}`
-        : kind === "arrived"
+        : kind === "departed"
+          ? `Bus ${e.bus_id} left its terminal (${via})`
+          : kind === "arrived"
           ? `Bus ${e.bus_id} arrived (${via}) · ${e.boarded_count ?? 0} boarded`
-          : `Bus ${e.bus_id} back at the terminal`;
+            : `Bus ${e.bus_id} back at the terminal`;
     items.push({ key: `e-${e.id}`, at: e.created_at, kind, destination, text });
   }
 
@@ -177,6 +180,7 @@ export const CONFIG_LABELS: Record<string, { label: string; unit: string }> = {
   default_eta_minutes: { label: "Default ETA", unit: "min" },
   avg_bus_speed_kmh: { label: "Average bus speed", unit: "km/h" },
   arrival_radius_m: { label: "Arrival radius", unit: "m" },
+  off_route_m: { label: "Off-route after", unit: "m" },
 };
 
 export function configValue(rows: readonly ConfigRow[], key: string, fallback: number): number {

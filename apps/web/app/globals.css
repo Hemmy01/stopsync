@@ -155,3 +155,44 @@
     transform: none;
   }
 }
+
+/* Dashboard map: greyed OpenStreetMap tiles so only route colours stand out. */
+.map-tiles-muted {
+  filter: grayscale(1) contrast(0.9) brightness(1.06);
+}
+
+.leaflet-container {
+  font-family: var(--font-manrope), system-ui, sans-serif;
+  background: var(--paper);
+}
+
+.bus-marker-wrap {
+  background: none;
+  border: 0;
+}
+
+.bus-marker {
+  display: flex;
+  height: 28px;
+  width: 64px;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #fff;
+  border-radius: var(--radius-pill);
+  color: #fff;
+  font-family: var(--font-jetbrains-mono), ui-monospace, monospace;
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: transform var(--duration) var(--ease-out);
+}
+
+.bus-marker-selected {
+  outline: 3px solid var(--ink);
+  transform: scale(1.12);
+}
+
+.map-kiosk-label {
+  font-weight: 600;
+}

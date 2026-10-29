@@ -26,9 +26,11 @@ import { getSupabase } from "@/lib/supabase";
 import { useActions } from "@/lib/use-actions";
 import { useDashboardData } from "@/lib/use-dashboard-data";
 import { useNow } from "@/lib/use-now";
+import { useRoutes } from "@/lib/use-routes";
 import { ActivityFeed } from "./ActivityFeed";
 import { DashboardHeader } from "./DashboardHeader";
 import { DestinationCard, type CardActions } from "./DestinationCard";
+import { LiveMap } from "./LiveMap";
 import { MethodBreakdown } from "./MethodBreakdown";
 import { ModelInsights } from "./ModelInsights";
 import { SettingsPanel } from "./SettingsPanel";
@@ -41,6 +43,7 @@ export function DashboardApp() {
   const { data, loading, error, reload } = useDashboardData();
   const { run, isPending, errors } = useActions();
   const now = useNow();
+  const { routes, error: routesError } = useRoutes();
 
   const act = (key: string, fn: () => Promise<ActionResult>) => {
     void run(key, fn).then(reload);
@@ -120,6 +123,14 @@ export function DashboardApp() {
             ) : null,
           )}
         </section>
+
+        {routesError ? (
+          <Banner tone="warn" title="Can't load routes for the map">
+            {routesError}
+          </Banner>
+        ) : null}
+
+        {data && now ? <LiveMap routes={routes} buses={data.buses} now={now} /> : null}
 
         {data && derived ? (
           <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_440px]">
