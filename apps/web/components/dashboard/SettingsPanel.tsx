@@ -6,12 +6,35 @@ import { CONFIG_LABELS, type ConfigRow } from "@/lib/dashboard";
 
 interface SettingsPanelProps {
   rows: ConfigRow[];
-  save: (key: string, value: number) => void;
+  /** Admins only; without it the values are shown read-only. */
+  save?: (key: string, value: number) => void;
   isPending: (key: string) => boolean;
   errors: Readonly<Record<string, string>>;
 }
 
-function SettingRow({ row, save, pending, error }: { row: ConfigRow; save: SettingsPanelProps["save"]; pending: boolean; error?: string }) {
+function ReadOnlyRow({ row }: { row: ConfigRow }) {
+  const meta = CONFIG_LABELS[row.key] ?? { label: row.key, unit: "" };
+  return (
+    <li className="flex flex-wrap items-baseline gap-x-3 border-b border-line py-3 last:border-b-0">
+      <span className="min-w-0 flex-1 font-semibold">{meta.label}</span>
+      <span className="num">{Number(row.value)}</span>
+      <span className="w-10 text-sm text-muted">{meta.unit}</span>
+      {row.description ? <p className="w-full text-sm text-muted">{row.description}</p> : null}
+    </li>
+  );
+}
+
+function SettingRow({
+  row,
+  save,
+  pending,
+  error,
+}: {
+  row: ConfigRow;
+  save: NonNullable<SettingsPanelProps["save"]>;
+  pending: boolean;
+  error?: string;
+}) {
   const [draft, setDraft] = useState(String(row.value));
   const [savedValue, setSavedValue] = useState(row.value);
   // Follow live changes from other screens unless the user is mid-edit.
@@ -75,17 +98,23 @@ export function SettingsPanel({ rows, save, isPending, errors }: SettingsPanelPr
       <h2 id="settings-title" className="text-lg">
         Settings
       </h2>
-      <p className="text-sm text-muted">Dispatch rules. Changes apply on the next run.</p>
+      <p className="text-sm text-muted">
+        Dispatch rules. {save ? "Changes apply on the next run." : "Only an admin can change them."}
+      </p>
       <ul className="mt-2">
-        {[...rows].sort(byLabelOrder).map((row) => (
-          <SettingRow
-            key={row.key}
-            row={row}
-            save={save}
-            pending={isPending(`config-${row.key}`)}
-            error={errors[`config-${row.key}`]}
-          />
-        ))}
+        {[...rows].sort(byLabelOrder).map((row) =>
+          save ? (
+            <SettingRow
+              key={row.key}
+              row={row}
+              save={save}
+              pending={isPending(`config-${row.key}`)}
+              error={errors[`config-${row.key}`]}
+            />
+          ) : (
+            <ReadOnlyRow key={row.key} row={row} />
+          ),
+        )}
       </ul>
     </section>
   );

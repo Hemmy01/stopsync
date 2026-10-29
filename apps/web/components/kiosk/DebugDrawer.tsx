@@ -3,6 +3,7 @@
 import clsx from "clsx";
 import { X } from "lucide-react";
 import { useState, type FormEvent } from "react";
+import { AccountBadge } from "@/components/auth/AccountBadge";
 import { RouteBadge } from "@/components/RouteBadge";
 import { DESTINATIONS } from "@/lib/destinations";
 import type { MockBoard } from "@/lib/serial";
@@ -100,6 +101,11 @@ export function DebugDrawer({ mock, log, onClose }: DebugDrawerProps) {
           <X aria-hidden className="h-5 w-5" />
         </button>
       </header>
+
+      <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-3">
+        <p className="text-sm font-semibold uppercase tracking-[0.12em] text-muted">Kiosk account</p>
+        <AccountBadge />
+      </div>
 
       <div className="space-y-5 overflow-y-auto border-b border-line p-5">
         <section>

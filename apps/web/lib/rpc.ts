@@ -122,6 +122,9 @@ async function action(
 export const approveDecision = (c: StopSyncClient, id: number) => action(c.rpc("approve_decision", { p_decision: id }));
 export const dismissDecision = (c: StopSyncClient, id: number) => action(c.rpc("dismiss_decision", { p_decision: id }));
 export const resetBus = (c: StopSyncClient, busId: string) => action(c.rpc("reset_bus", { p_bus: busId }));
+/** Admin only: a user's role, and the bus when the role is driver. */
+export const setUserRole = (c: StopSyncClient, userId: string, role: string, busId: string | null) =>
+  action(c.rpc("set_user_role", { p_user: userId, p_role: role, ...(busId ? { p_bus: busId } : {}) }));
 
 /** The bus is back at its terminal: riders get off (tokens → completed), occupancy drops. */
 export const completeTrip = (c: StopSyncClient, busId: string, source: "dashboard" | "gps" | "manual") =>

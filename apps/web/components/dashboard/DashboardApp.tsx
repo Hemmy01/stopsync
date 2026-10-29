@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { Banner } from "@/components/Banner";
+import { canAdminister, canDispatch } from "@/lib/auth";
 import { cancellationStats } from "@/lib/cancel-reasons";
 import {
   buildActivity,
@@ -26,6 +27,7 @@ import {
 } from "@/lib/rpc";
 import { getSupabase } from "@/lib/supabase";
 import { useActions } from "@/lib/use-actions";
+import { useAccount } from "@/lib/use-account";
 import { useDashboardData } from "@/lib/use-dashboard-data";
 import { useNow } from "@/lib/use-now";
 import { useRoutes } from "@/lib/use-routes";
@@ -43,6 +45,9 @@ function CardSkeleton() {
 }
 
 export function DashboardApp() {
+  const account = useAccount();
+  const dispatcher = canDispatch(account.role);
+  const admin = canAdminister(account.role);
   const { data, loading, error, reload } = useDashboardData();
   const { run, isPending, errors } = useActions();
   const now = useNow();
@@ -103,6 +108,8 @@ export function DashboardApp() {
         recomputing={isPending("dispatch")}
         onResetDemo={() => act("reset-demo", () => resetDemo(getSupabase()))}
         resetting={isPending("reset-demo")}
+        canDispatch={dispatcher}
+        canAdminister={admin}
       />
 
       <main className="mx-auto max-w-[1440px] space-y-6 px-4 py-6 sm:px-8">
@@ -142,7 +149,7 @@ export function DashboardApp() {
                 )}
                 buses={data.buses.filter((b) => b.destination === d.code)}
                 pending={derived.pending[d.code]}
-                actions={actions}
+                actions={dispatcher ? actions : null}
               />
             ) : loading ? (
               <CardSkeleton key={d.code} />
@@ -167,7 +174,7 @@ export function DashboardApp() {
               <ModelInsights rows={derived.insights} />
               <SettingsPanel
                 rows={data.config}
-                save={(key, value) => act(`config-${key}`, () => updateConfig(getSupabase(), key, value))}
+                save={admin ? (key, value) => act(`config-${key}`, () => updateConfig(getSupabase(), key, value)) : undefined}
                 isPending={isPending}
                 errors={errors}
               />

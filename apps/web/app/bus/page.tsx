@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { RequireRole } from "@/components/auth/RequireRole";
 import { BusApp } from "@/components/bus/BusApp";
 
 export const metadata: Metadata = {
@@ -6,5 +7,9 @@ export const metadata: Metadata = {
 };
 
 export default function BusPage() {
-  return <BusApp />;
+  return (
+    <RequireRole page="/bus">
+      <BusApp />
+    </RequireRole>
+  );
 }
