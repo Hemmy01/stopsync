@@ -9,10 +9,10 @@ on conflict (id) do update
 -- voice_label / gesture_label / gesture_hint must match firmware/kiosk_node/config.h
 -- (a Vitest test checks this against apps/web/lib/destinations.ts).
 insert into public.destinations (code, name, route, sort_order, voice_label, gesture_label, gesture_hint) values
-  ('NYA', 'Nyabugogo', 'R1', 1, 'nyabugogo', 'three_taps', 'Tap 3 times'),
-  ('REM', 'Remera',    'R2', 2, 'remera',    'one_tap',    'Tap once'),
-  ('KIM', 'Kimironko', 'R3', 3, 'kimironko', 'hold',       'Hold your hand still'),
-  ('DTN', 'Downtown',  'R4', 4, 'downtown',  'two_taps',   'Tap twice')
+  ('NYA', 'Nyabugogo', 'R1', 1, 'nyabugogo', 'swipe_up',    'Swipe up'),
+  ('REM', 'Remera',    'R2', 2, 'remera',    'swipe_left',  'Swipe left'),
+  ('KIM', 'Kimironko', 'R3', 3, 'kimironko', 'swipe_down',  'Swipe down'),
+  ('DTN', 'Downtown',  'R4', 4, 'downtown',  'swipe_right', 'Swipe right')
 on conflict (code) do update
   set name = excluded.name, route = excluded.route, sort_order = excluded.sort_order,
       voice_label = excluded.voice_label, gesture_label = excluded.gesture_label,
