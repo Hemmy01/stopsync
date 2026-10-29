@@ -1,10 +1,11 @@
 import clsx from "clsx";
-import { AlertTriangle, Check, X } from "lucide-react";
+import { AlertTriangle, Check, Play, Square, X } from "lucide-react";
 import { Button } from "@/components/Button";
 import { OccupancyBar } from "@/components/OccupancyBar";
 import { RouteBadge } from "@/components/RouteBadge";
 import type { Decision, DestinationSummary } from "@/lib/dashboard";
 import type { Bus } from "@/lib/departures";
+import type { DriveProgress } from "@/lib/use-simulated-drives";
 import type { DispatchPlaces } from "@/lib/occupancy";
 
 export interface CardActions {
@@ -14,6 +15,13 @@ export interface CardActions {
   reset: (bus: Bus) => void;
   isPending: (key: string) => boolean;
   errorFor: (keys: string[]) => string | undefined;
+  /** Simulate drive (presentation aid): move a released bus along its route without a phone. */
+  drive: {
+    progress: (busId: string) => DriveProgress | undefined;
+    start: (bus: Bus) => void;
+    stop: (busId: string) => void;
+    error: (busId: string) => string | undefined;
+  };
 }
 
 interface DestinationCardProps {
@@ -81,7 +89,7 @@ function BusRow({ bus, actions }: { bus: Bus; actions: CardActions | null }) {
   const arriveKey = `arrive-${bus.id}`;
   const resetKey = `reset-${bus.id}`;
   return (
-    <li className="flex min-h-11 items-center gap-3 py-1">
+    <li className="flex min-h-11 flex-wrap items-center gap-x-3 py-1">
       <span className="num w-14 font-semibold">{bus.id}</span>
       <div className="min-w-0 flex-1">
         <p className={clsx("text-sm", bus.status === "at_terminal" ? "text-muted" : "font-semibold")}>
@@ -102,7 +110,45 @@ function BusRow({ bus, actions }: { bus: Bus; actions: CardActions | null }) {
           Reset bus
         </Button>
       ) : null}
+      {actions && bus.status === "on_the_way" ? <DriveControl bus={bus} drive={actions.drive} /> : null}
     </li>
+  );
+}
+
+function DriveControl({ bus, drive }: { bus: Bus; drive: CardActions["drive"] }) {
+  const running = drive.progress(bus.id);
+  const error = drive.error(bus.id);
+  return (
+    // Its own line under the bus, lined up with the status (bus id column 56 px + 12 px gap).
+    <div className="w-full pl-[68px]">
+      {running ? (
+        <button
+          type="button"
+          onClick={() => drive.stop(bus.id)}
+          className="inline-flex h-11 items-center gap-2 text-sm font-semibold text-ink hover:underline"
+        >
+          <Square aria-hidden className="h-3.5 w-3.5 fill-current" />
+          Stop simulated drive
+          <span className="num font-normal text-muted">
+            {running.step}/{running.steps}
+          </span>
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={() => drive.start(bus)}
+          className="inline-flex h-11 items-center gap-2 text-sm font-semibold text-muted hover:text-ink hover:underline"
+        >
+          <Play aria-hidden className="h-3.5 w-3.5" />
+          Simulate drive
+        </button>
+      )}
+      {error ? (
+        <p role="alert" className="text-sm font-semibold text-danger">
+          {error}
+        </p>
+      ) : null}
+    </div>
   );
 }
 
