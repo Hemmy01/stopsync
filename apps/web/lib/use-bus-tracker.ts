@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { HIDDEN_GAP_WARN_MS } from "./auto-tracking";
 import { geoProblem, msUntilNextSend } from "./geo";
 import { jsonNumber, jsonString, updateBusLocation } from "./rpc";
 import { getSupabase } from "./supabase";
@@ -22,6 +23,8 @@ export interface TrackerState {
   warning: string | null;
   /** Fatal problem: sharing stopped. */
   error: string | null;
+  /** Longest stretch tracking lost while the page was hidden (phones pause background GPS). */
+  hiddenGapMs: number | null;
 }
 
 const INITIAL: TrackerState = {
@@ -31,6 +34,7 @@ const INITIAL: TrackerState = {
   lastResult: null,
   warning: null,
   error: null,
+  hiddenGapMs: null,
 };
 
 /**
@@ -127,7 +131,13 @@ export function useBusTracker(busId: string | null) {
       return;
     }
     lastSentAt.current = null;
-    setState((s) => ({ ...s, sharing: true, error: null, warning: "Waiting for the first GPS fix…" }));
+    setState((s) => ({
+      ...s,
+      sharing: true,
+      error: null,
+      hiddenGapMs: null,
+      warning: "Waiting for the first GPS fix…",
+    }));
     watchId.current = navigator.geolocation.watchPosition(onPosition, onError, {
       enableHighAccuracy: true,
       maximumAge: 0,
@@ -135,8 +145,27 @@ export function useBusTracker(busId: string | null) {
     });
   }, [busId, onPosition, onError]);
 
-  // Switching bus or leaving the page (hidden or unmounted) stops sharing.
+  // Switching bus or leaving the page stops sharing.
   useEffect(() => stop, [busId, stop]);
+
+  // Phones pause GPS for background tabs: tell the driver how long we lost.
+  useEffect(() => {
+    if (!state.sharing) return;
+    let hiddenAt: number | null = null;
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") {
+        hiddenAt = Date.now();
+        return;
+      }
+      const gap = hiddenAt === null ? 0 : Date.now() - hiddenAt;
+      hiddenAt = null;
+      if (gap > HIDDEN_GAP_WARN_MS) {
+        setState((s) => ({ ...s, hiddenGapMs: Math.max(s.hiddenGapMs ?? 0, gap) }));
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, [state.sharing]);
 
   const reset = useCallback(() => setState(INITIAL), []);
 
