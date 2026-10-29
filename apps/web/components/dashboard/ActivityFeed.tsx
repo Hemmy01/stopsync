@@ -1,10 +1,11 @@
-import { BusFront, Check, Flag, Lightbulb, LogIn, MapPin, Navigation, RotateCcw, Ticket, Users, X } from "lucide-react";
+import { BusFront, Check, Flag, Lightbulb, LogIn, LogOut, MapPin, Navigation, RotateCcw, Ticket, Users, X } from "lucide-react";
 import type { ActivityItem, ActivityKind } from "@/lib/dashboard";
 import { getDestination } from "@/lib/destinations";
 import { formatKigaliTime } from "@/lib/time";
 
 const ICONS: Record<ActivityKind, typeof Ticket> = {
   token: Ticket,
+  cancelled: LogOut,
   recommendation: Lightbulb,
   approved: Check,
   dismissed: X,

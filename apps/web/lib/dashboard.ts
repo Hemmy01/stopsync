@@ -100,7 +100,7 @@ export function pendingByDestination(decisions: readonly Decision[]): Record<str
   return result;
 }
 
-export type ActivityKind = "token" | "recommendation" | "approved" | "dismissed" | "released" | "departed" | "boarded" | "arrived" | "completed" | "occupancy" | "reset";
+export type ActivityKind = "token" | "cancelled" | "recommendation" | "approved" | "dismissed" | "released" | "departed" | "boarded" | "arrived" | "completed" | "occupancy" | "reset";
 
 export interface ActivityItem {
   key: string;
@@ -129,6 +129,7 @@ export function buildActivity(
   buses: readonly Bus[],
   limit = 40,
   stopName: (stopId: string) => string = (id) => id,
+  reasonLabel: (code: string) => string = (code) => code,
 ): ActivityItem[] {
   const items: ActivityItem[] = [];
   const busDest = new Map(buses.map((b) => [b.id, b.destination]));
@@ -150,6 +151,15 @@ export function buildActivity(
       destination: t.destination,
       text: `${t.code} joined the queue for ${destName(t.destination)} · ${how}${conf}`,
     });
+    if (t.status === "cancelled" && t.cancelled_at) {
+      items.push({
+        key: `t-${t.id}-cancelled`,
+        at: t.cancelled_at,
+        kind: "cancelled",
+        destination: t.destination,
+        text: `${t.code} left the queue · ${t.cancel_reason ? reasonLabel(t.cancel_reason) : "no reason"}`,
+      });
+    }
   }
 
   for (const d of decisions) {

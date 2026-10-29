@@ -1,5 +1,6 @@
 "use client";
 
+import type { CancelReason } from "./cancel-reasons";
 import type { BusEvent, ConfigRow, Decision, Token } from "./dashboard";
 import type { Tables } from "./database.types";
 
@@ -12,8 +13,9 @@ import { unwrap, useRealtimeData, type RealtimeTable } from "./use-realtime-data
 export interface DashboardData {
   dayStart: string;
   destinations: Tables<"destinations">[];
-  /** Waiting tokens (any day) plus every token created or boarded today. */
+  /** Waiting tokens (any day) plus every token created, boarded or cancelled today. */
   tokens: Token[];
+  cancelReasons: CancelReason[];
   buses: Bus[];
   decisions: Decision[];
   events: BusEvent[];
@@ -33,12 +35,12 @@ const TABLES: readonly RealtimeTable[] = [
 
 async function loadDashboard(supabase: StopSyncClient): Promise<DashboardData> {
   const dayStart = kigaliDayStartISO();
-  const [destinations, tokens, buses, decisions, events, config, insights] = await Promise.all([
+  const [destinations, tokens, buses, decisions, events, config, insights, cancelReasons] = await Promise.all([
     supabase.from("destinations").select("*").order("sort_order"),
     supabase
       .from("queue_tokens")
       .select("*")
-      .or(`status.eq.waiting,created_at.gte.${dayStart},boarded_at.gte.${dayStart}`)
+      .or(`status.eq.waiting,created_at.gte.${dayStart},boarded_at.gte.${dayStart},cancelled_at.gte.${dayStart}`)
       .order("created_at", { ascending: false })
       .limit(1000),
     supabase.from("buses").select("*").order("id"),
@@ -46,6 +48,7 @@ async function loadDashboard(supabase: StopSyncClient): Promise<DashboardData> {
     supabase.from("bus_events").select("*").order("id", { ascending: false }).limit(50),
     supabase.from("config").select("*").order("key"),
     supabase.from("model_insights_today").select("*"),
+    supabase.from("cancel_reasons").select("*").order("sort_order"),
   ]);
   return {
     dayStart,
@@ -56,6 +59,7 @@ async function loadDashboard(supabase: StopSyncClient): Promise<DashboardData> {
     events: unwrap(events),
     config: unwrap(config),
     insights: unwrap(insights),
+    cancelReasons: unwrap(cancelReasons),
   };
 }
 

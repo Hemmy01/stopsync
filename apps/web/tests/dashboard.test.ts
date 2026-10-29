@@ -24,6 +24,8 @@ function token(over: Partial<Token>): Token {
     stop_id: "STOP-01",
     bus_id: null,
     completed_at: null,
+    cancel_reason: null,
+    cancelled_at: null,
     destination: "KIM",
     card_id: null,
     method: "voice",
@@ -187,6 +189,15 @@ describe("buildActivity", () => {
       "Recommend releasing a bus to Kimironko · Load 72% ≥ 70%",
       "R3-001 joined the queue for Kimironko · voice 91%",
     ]);
+  });
+});
+
+describe("buildActivity with cancellations", () => {
+  it("adds a line when a passenger leaves the queue, with the reason's label", () => {
+    const t = token({ code: "R3-009", status: "cancelled", cancel_reason: "other_transport", cancelled_at: "2026-10-27T10:00:00Z" });
+    const labels = new Map([["other_transport", "Took another transport (moto/taxi)"]]);
+    const feed = buildActivity([t], [], [], [], 40, undefined, (c) => labels.get(c) ?? c);
+    expect(feed.find((i) => i.kind === "cancelled")).toMatchObject({ text: "R3-009 left the queue · Took another transport (moto/taxi)" });
   });
 });
 
