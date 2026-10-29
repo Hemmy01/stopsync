@@ -216,6 +216,18 @@ through `simulate_bus_position` (dispatcher or admin, only for a bus on the way)
 route strip, ETA and arrival all happen as with real GPS (events are logged as GPS). It runs in that
 dashboard tab: closing the tab or **Stop simulated drive** leaves the bus where it is.
 
+### Kiosk languages
+
+The kiosk has an **English | Kinyarwanda** switch in its top bar (remembered in that browser).
+Every passenger-facing string lives in `apps/web/lib/kiosk-text.ts`; English reuses the existing
+labels (gesture hints from `destinations.ts`, cancel reasons from the database). Operator-only text
+(board banners, the debug drawer, the demo card picker) stays English, and stop names and spoken
+keywords never change ("Vuga “Remera”").
+
+> **The Kinyarwanda text is a draft written without a native speaker.** Before showing it to the
+> public, have a Kinyarwanda speaker read every `rw` string in `kiosk-text.ts`; fixes are one-line
+> edits there. A test fails if any string is empty or left in English.
+
 ### SQL scenario tests
 
 ```zsh

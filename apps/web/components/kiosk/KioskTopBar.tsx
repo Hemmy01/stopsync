@@ -3,6 +3,7 @@ import { KigaliClock } from "@/components/KigaliClock";
 import { HomeLink } from "@/components/HomeLink";
 import type { BoardStatus } from "@/lib/use-board";
 import { BoardStatusPill } from "./BoardStatusPill";
+import { LanguageSwitch } from "./LanguageSwitch";
 
 interface KioskTopBarProps {
   stopName: string;
@@ -18,6 +19,7 @@ export function KioskTopBar({ stopName, boardStatus, actions }: KioskTopBarProps
       <span aria-hidden className="h-8 w-px bg-line" />
       <span className="text-lg font-semibold">{stopName}</span>
       <div className="ml-auto flex items-center gap-4">
+        <LanguageSwitch />
         <BoardStatusPill status={boardStatus} />
         {actions}
         <KigaliClock className="ml-2 text-[32px] font-medium" />

@@ -93,20 +93,39 @@ export function evenStripFraction(stops: readonly RouteStop[], progressM: number
   return 1;
 }
 
+/** The words of a progress line, so the kiosk can show it in another language. */
+export interface ProgressWords {
+  bus: (id: string) => string;
+  passed: (stop: string) => string;
+  left: (stop: string) => string;
+  at: (stop: string) => string;
+  stopsAway: (n: number) => string;
+  eta: (minutes: number | null) => string;
+}
+
+export const EN_PROGRESS: ProgressWords = {
+  bus: (id) => `Bus ${id}`,
+  passed: (stop) => `passed ${stop}`,
+  left: (stop) => `left ${stop}`,
+  at: (stop) => `at ${stop}`,
+  stopsAway: (n) => `${n} ${n === 1 ? "stop" : "stops"} away`,
+  eta: formatEta,
+};
+
 /** "Bus R2-01 · passed Kiyovu · 1 stop away · about 6 min". */
-export function busProgressLine(bus: Bus, progress: BusProgress): string {
-  const parts = [`Bus ${bus.id}`];
+export function busProgressLine(bus: Bus, progress: BusProgress, words: ProgressWords = EN_PROGRESS): string {
+  const parts = [words.bus(bus.id)];
   if (progress.lastStopName && progress.lastIndex !== null && progress.lastIndex > 0) {
-    parts.push(`passed ${progress.lastStopName}`);
-  } else if (progress.lastIndex === 0 && bus.departed_at) {
-    parts.push(`left ${progress.lastStopName}`);
-  } else if (progress.lastIndex === 0) {
-    parts.push(`at ${progress.lastStopName}`);
+    parts.push(words.passed(progress.lastStopName));
+  } else if (progress.lastStopName && progress.lastIndex === 0 && bus.departed_at) {
+    parts.push(words.left(progress.lastStopName));
+  } else if (progress.lastStopName && progress.lastIndex === 0) {
+    parts.push(words.at(progress.lastStopName));
   }
   if (progress.stopsRemaining !== null && progress.stopsRemaining > 0) {
-    parts.push(`${progress.stopsRemaining} ${progress.stopsRemaining === 1 ? "stop" : "stops"} away`);
+    parts.push(words.stopsAway(progress.stopsRemaining));
   }
-  parts.push(formatEta(progress.etaMinutes));
+  parts.push(words.eta(progress.etaMinutes));
   return parts.join(" · ");
 }
 
@@ -122,7 +141,12 @@ export interface TrackedBus {
 }
 
 /** The bus coming for a ticket's destination, when it is on the way and on its route. */
-export function trackBusFor(destination: string, buses: readonly Bus[], routes: readonly Route[]): TrackedBus | null {
+export function trackBusFor(
+  destination: string,
+  buses: readonly Bus[],
+  routes: readonly Route[],
+  words: ProgressWords = EN_PROGRESS,
+): TrackedBus | null {
   const status = departureStatus(destination, buses);
   if (status.kind !== "on_the_way") return null;
   const bus = buses.find((b) => b.id === status.busId);
@@ -130,5 +154,5 @@ export function trackBusFor(destination: string, buses: readonly Bus[], routes: 
   if (!bus || !route) return null;
   const progress = busProgress(bus, route);
   if (progress.stripFraction === null) return null;  // no GPS yet, or off the route
-  return { bus, route, progress, line: busProgressLine(bus, progress) };
+  return { bus, route, progress, line: busProgressLine(bus, progress, words) };
 }

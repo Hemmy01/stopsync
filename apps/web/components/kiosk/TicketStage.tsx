@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import type { TicketStatus } from "@/lib/queue";
+import { useKioskText } from "@/lib/use-kiosk-text";
 import { StepCountdown } from "./StepCountdown";
 import { TicketCard } from "./TicketCard";
 
@@ -20,6 +21,7 @@ interface TicketStageProps {
 
 /** Steps 4 and 5: a new ticket, or the card's existing one. */
 export function TicketStage({ heading, subheading, timeoutMs, onDone, below, onCancelPlace, ...ticket }: TicketStageProps) {
+  const { t } = useKioskText();
   return (
     <div className="flex h-full flex-col">
       <div className="mb-6 flex items-start justify-between gap-8">
@@ -33,7 +35,7 @@ export function TicketStage({ heading, subheading, timeoutMs, onDone, below, onC
             onClick={onCancelPlace}
             className="h-14 shrink-0 rounded-card border border-line bg-surface px-6 font-semibold text-danger transition-colors duration-200 ease-out hover:border-danger"
           >
-            Cancel my place
+            {t.cancelMyPlace}
           </button>
         ) : null}
       </div>
@@ -45,13 +47,13 @@ export function TicketStage({ heading, subheading, timeoutMs, onDone, below, onC
         <div className="mt-5 flex shrink-0 items-end gap-6">
           <div className="min-w-0 flex-1">{below}</div>
           <div className="flex w-[200px] shrink-0 flex-col gap-3 pb-2">
-            <StepCountdown ms={timeoutMs} label="Back to start in" />
+            <StepCountdown ms={timeoutMs} label={t.backToStartIn} />
             <DoneButton onDone={onDone} />
           </div>
         </div>
       ) : (
         <div className="mt-auto flex items-end justify-between pt-6">
-          <StepCountdown ms={timeoutMs} label="Back to start in" />
+          <StepCountdown ms={timeoutMs} label={t.backToStartIn} />
           <DoneButton onDone={onDone} />
         </div>
       )}
@@ -60,13 +62,14 @@ export function TicketStage({ heading, subheading, timeoutMs, onDone, below, onC
 }
 
 function DoneButton({ onDone }: { onDone: () => void }) {
+  const { t } = useKioskText();
   return (
     <button
       type="button"
       onClick={onDone}
       className="h-16 min-w-[200px] rounded-card bg-ink px-8 text-[22px] font-semibold text-paper transition-opacity duration-200 ease-out hover:opacity-90"
     >
-      Done
+      {t.done}
     </button>
   );
 }

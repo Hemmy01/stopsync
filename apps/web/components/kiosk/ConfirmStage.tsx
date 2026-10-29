@@ -2,7 +2,8 @@ import { Hand, Loader2, Mic, MousePointerClick } from "lucide-react";
 import { Banner } from "@/components/Banner";
 import { RouteBadge } from "@/components/RouteBadge";
 import { getDestination } from "@/lib/destinations";
-import { selectionLabel, STEP_TIMEOUT_MS, type Selection } from "@/lib/kiosk-machine";
+import { STEP_TIMEOUT_MS, type Selection } from "@/lib/kiosk-machine";
+import { useKioskText } from "@/lib/use-kiosk-text";
 import { StepCountdown } from "./StepCountdown";
 
 interface ConfirmStageProps {
@@ -17,14 +18,15 @@ const METHOD_ICON = { voice: Mic, gesture: Hand, manual: MousePointerClick } as 
 
 /** Step 3: "Kimironko?" with how it was chosen, then Confirm or Change. */
 export function ConfirmStage({ selection, submitting, error, onConfirm, onChange }: ConfirmStageProps) {
+  const { t } = useKioskText();
   const dest = getDestination(selection.code);
   const Icon = METHOD_ICON[selection.method];
 
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-start justify-between gap-8">
-        <p className="text-lg font-semibold uppercase tracking-[0.12em] text-muted">Is this your stop?</p>
-        {submitting ? null : <StepCountdown ms={STEP_TIMEOUT_MS.confirm ?? 15_000} label="Cancels in" />}
+        <p className="text-lg font-semibold uppercase tracking-[0.12em] text-muted">{t.isThisYourStop}</p>
+        {submitting ? null : <StepCountdown ms={STEP_TIMEOUT_MS.confirm ?? 15_000} label={t.cancelsIn} />}
       </div>
 
       <div className="flex flex-1 items-center gap-10">
@@ -33,14 +35,14 @@ export function ConfirmStage({ selection, submitting, error, onConfirm, onChange
           <h1 className="text-[56px] leading-none">{dest?.name ?? selection.code}?</h1>
           <p className="mt-5 inline-flex h-11 items-center gap-2 rounded-pill border border-line bg-surface px-4 text-lg font-semibold">
             <Icon aria-hidden className="h-5 w-5 text-muted" />
-            <span className="tabular-nums">{selectionLabel(selection)}</span>
+            <span className="tabular-nums">{t.selection(selection)}</span>
           </p>
         </div>
       </div>
 
       {error ? (
-        <Banner tone="danger" title="We couldn't get your number" className="mb-5">
-          {error} Please try again or tap Change.
+        <Banner tone="danger" title={t.numberFailed} className="mb-5">
+          {error} {t.tryAgainOrChange}
         </Banner>
       ) : null}
 
@@ -55,10 +57,10 @@ export function ConfirmStage({ selection, submitting, error, onConfirm, onChange
           {submitting ? (
             <>
               <Loader2 aria-hidden className="h-7 w-7 animate-spin" />
-              Getting your number…
+              {t.gettingNumber}
             </>
           ) : (
-            "Confirm"
+            t.confirm
           )}
         </button>
         <button
@@ -67,7 +69,7 @@ export function ConfirmStage({ selection, submitting, error, onConfirm, onChange
           disabled={submitting}
           className="h-[72px] rounded-card border border-line bg-surface px-10 text-[22px] font-semibold transition-colors duration-200 ease-out hover:border-ink disabled:opacity-50"
         >
-          Change
+          {t.change}
         </button>
       </div>
     </div>

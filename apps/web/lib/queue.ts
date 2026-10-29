@@ -65,12 +65,12 @@ export function ticketRange(b: Pick<Boarding, "firstCode" | "lastCode">): string
 
 export type TicketStatus =
   | { kind: "waiting"; line: string }
-  | { kind: "on_the_way"; line: string; busId: string }
+  | { kind: "on_the_way"; line: string; busId: string; etaMinutes: number | null }
   /** The ticket was boarded: its bus is here. */
   | { kind: "called"; line: string; busId: string }
   /** A bus for the route is at the stop but didn't take this ticket (full, or ticket came later). */
-  | { kind: "not_called"; line: string; busId: string }
-  | { kind: "done"; line: string };
+  | { kind: "not_called"; line: string; busId: string; position: number | null; known: boolean }
+  | { kind: "done"; line: string; ended: "completed" | "cancelled" | "invalid" };
 
 /** What the ticket's status panel says, from the ticket itself and the route's buses. */
 export function ticketStatus(
@@ -83,9 +83,9 @@ export function ticketStatus(
     return { kind: "called", line: "Your bus is here, please board", busId: ticket.bus_id };
   }
   if (ticket && ticket.status !== "waiting") {
-    const line =
-      ticket.status === "completed" ? "Trip completed" : ticket.status === "cancelled" ? "Place cancelled" : "Ticket no longer valid";
-    return { kind: "done", line };
+    const ended = ticket.status === "completed" ? "completed" : ticket.status === "cancelled" ? "cancelled" : "invalid";
+    const line = { completed: "Trip completed", cancelled: "Place cancelled", invalid: "Ticket no longer valid" }[ended];
+    return { kind: "done", line, ended };
   }
 
   const route = departureStatus(destination, buses);
@@ -95,6 +95,7 @@ export function ticketStatus(
         kind: "on_the_way",
         line: `Bus ${route.busId} is on the way · ${formatEta(route.etaMinutes)}`,
         busId: route.busId,
+        etaMinutes: route.etaMinutes,
       };
     case "boarding":
       // Until the ticket row arrives over Realtime we can't tell whether it was called.
@@ -103,8 +104,10 @@ export function ticketStatus(
             kind: "not_called",
             line: `Not on ${route.busId} · you keep your place${position ? ` (No. ${position})` : ""}`,
             busId: route.busId,
+            position,
+            known: true,
           }
-        : { kind: "not_called", line: `Bus ${route.busId} is at the stop`, busId: route.busId };
+        : { kind: "not_called", line: `Bus ${route.busId} is at the stop`, busId: route.busId, position, known: false };
     case "waiting":
       return { kind: "waiting", line: "Waiting for dispatch" };
   }

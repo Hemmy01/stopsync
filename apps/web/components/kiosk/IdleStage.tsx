@@ -4,8 +4,9 @@ import { Loader2, Nfc, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { RouteBadge } from "@/components/RouteBadge";
 import { DEMO_CARDS, newTestCardId } from "@/lib/demo-cards";
-import { DESTINATIONS, gestureHintFor, swipeDirection } from "@/lib/destinations";
+import { DESTINATIONS, swipeDirection } from "@/lib/destinations";
 import type { BoardGestureMode } from "@/lib/protocol";
+import { useKioskText } from "@/lib/use-kiosk-text";
 import { SwipeArrow } from "./SwipeArrow";
 
 interface IdleStageProps {
@@ -17,17 +18,18 @@ interface IdleStageProps {
 
 /** Small sign: the voice name and gesture for each stop. */
 function HowToChoose({ gestureMode }: { gestureMode: BoardGestureMode }) {
+  const { t } = useKioskText();
   return (
     <section aria-labelledby="how-to-choose" className="mt-8 max-w-xl rounded-card border border-line bg-surface">
       <h2 id="how-to-choose" className="border-b border-line px-5 py-3 text-base font-semibold uppercase tracking-[0.12em] text-muted">
-        How to choose your stop
+        {t.howToChoose}
       </h2>
       <table className="w-full text-lg">
         <thead className="sr-only">
           <tr>
-            <th>Stop</th>
-            <th>Say</th>
-            <th>Or over the sensor</th>
+            <th>{t.columns.stop}</th>
+            <th>{t.columns.say}</th>
+            <th>{t.columns.sensor}</th>
           </tr>
         </thead>
         <tbody>
@@ -39,14 +41,14 @@ function HowToChoose({ gestureMode }: { gestureMode: BoardGestureMode }) {
                   <span className="font-semibold">{d.name}</span>
                 </span>
               </td>
-              <td className="py-2 text-muted">Say &ldquo;{d.name}&rdquo;</td>
+              <td className="py-2 text-muted">{t.say(d.name)}</td>
               <td className="py-2 pr-5 text-muted">
                 {gestureMode === "off" ? null : (
                   <span className="flex items-center gap-2">
                     {gestureMode === "swipe" ? (
                       <SwipeArrow direction={swipeDirection(d.gestureLabel)} className="h-5 w-5 text-ink" />
                     ) : null}
-                    {gestureHintFor(d, gestureMode)}
+                    {t.gestureHint(d.code, gestureMode)}
                   </span>
                 )}
               </td>
@@ -61,6 +63,7 @@ function HowToChoose({ gestureMode }: { gestureMode: BoardGestureMode }) {
 /** Step 1: "Tap your card to begin", with a simulated card reader. */
 export function IdleStage({ reading, gestureMode, onTap }: IdleStageProps) {
   const [picking, setPicking] = useState(false);
+  const { t } = useKioskText();
 
   useEffect(() => {
     if (!picking) return;
@@ -72,11 +75,10 @@ export function IdleStage({ reading, gestureMode, onTap }: IdleStageProps) {
   return (
     <div className="grid h-full grid-cols-[1fr_480px] items-center gap-16">
       <div>
-        <p className="text-lg font-semibold uppercase tracking-[0.12em] text-muted">Welcome</p>
-        <h1 className="mt-3 text-[56px] leading-[1.05]">Tap your card to begin</h1>
+        <p className="text-lg font-semibold uppercase tracking-[0.12em] text-muted">{t.welcome}</p>
+        <h1 className="mt-3 text-[56px] leading-[1.05]">{t.tapToBegin}</h1>
         <p className="mt-5 max-w-lg text-[22px] text-muted">
-          Then say your stop or {gestureMode === "swipe" ? "swipe over the sensor" : "tap over the sensor"}. You&rsquo;ll
-          get a queue number and live bus times.
+          {t.idleIntro(gestureMode)}
         </p>
         <HowToChoose gestureMode={gestureMode} />
       </div>
@@ -147,7 +149,7 @@ export function IdleStage({ reading, gestureMode, onTap }: IdleStageProps) {
               </span>
             </span>
             <span className="mt-6 font-display text-[28px] font-semibold">
-              {reading ? "Reading card…" : "Hold your card here"}
+              {reading ? t.readingCard : t.holdCardHere}
             </span>
             <span className="mt-2 text-base text-muted">Simulated RFID · click to choose a demo card</span>
           </button>

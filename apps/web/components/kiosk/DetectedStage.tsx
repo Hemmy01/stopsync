@@ -1,8 +1,9 @@
 import { Hand } from "lucide-react";
 import { RouteBadge } from "@/components/RouteBadge";
-import { getDestination, gestureHintFor, swipeDirection } from "@/lib/destinations";
+import { getDestination, swipeDirection } from "@/lib/destinations";
 import type { Selection } from "@/lib/kiosk-machine";
 import type { BoardGestureMode } from "@/lib/protocol";
+import { useKioskText } from "@/lib/use-kiosk-text";
 import { SwipeArrow } from "./SwipeArrow";
 
 interface DetectedStageProps {
@@ -12,6 +13,7 @@ interface DetectedStageProps {
 
 /** Between listening and confirm: the gesture the board recognised, e.g. "→ Downtown". */
 export function DetectedStage({ selection, gestureMode }: DetectedStageProps) {
+  const { t } = useKioskText();
   const dest = getDestination(selection.code);
   if (!dest) return null;
   const swipes = gestureMode === "swipe";
@@ -19,7 +21,7 @@ export function DetectedStage({ selection, gestureMode }: DetectedStageProps) {
   return (
     <div className="flex h-full flex-col">
       <p className="text-lg font-semibold uppercase tracking-[0.12em] text-muted" role="status">
-        Gesture recognised · {gestureHintFor(dest, gestureMode)}
+        {t.gestureRecognised} · {t.gestureHint(selection.code, gestureMode)}
       </p>
       <div className="flex flex-1 animate-tick items-center gap-10">
         {swipes ? (
