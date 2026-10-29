@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { DepartureStatus } from "@/lib/departures";
 import { StepCountdown } from "./StepCountdown";
 import { TicketCard } from "./TicketCard";
@@ -12,18 +13,21 @@ interface TicketStageProps {
   statusLine: string;
   timeoutMs: number;
   onDone: () => void;
+  /** Shown under the ticket, e.g. the route strip while the bus is on the way. */
+  below?: ReactNode;
 }
 
 /** Steps 4 and 5: a new ticket, or the card's existing one. */
-export function TicketStage({ heading, subheading, timeoutMs, onDone, ...ticket }: TicketStageProps) {
+export function TicketStage({ heading, subheading, timeoutMs, onDone, below, ...ticket }: TicketStageProps) {
   return (
     <div className="flex h-full flex-col">
       <div className="mb-6">
         <h1 className="text-[44px] leading-[1.05]">{heading}</h1>
-        {subheading ? <p className="mt-2 text-[22px] text-muted">{subheading}</p> : null}
+        {subheading && !below ? <p className="mt-2 text-[22px] text-muted">{subheading}</p> : null}
       </div>
 
-      <TicketCard {...ticket} />
+      <TicketCard {...ticket} compact={Boolean(below)} />
+      {below ? <div className="mt-5 shrink-0">{below}</div> : null}
 
       <div className="mt-auto flex items-end justify-between pt-6">
         <StepCountdown ms={timeoutMs} label="Back to start in" />

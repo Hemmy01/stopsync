@@ -3,11 +3,14 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { Banner } from "@/components/Banner";
 import { departureStatus, ticketStatusLine } from "@/lib/departures";
+import { getDestination } from "@/lib/destinations";
+import { trackBusFor } from "@/lib/routes";
 import { STEP_TIMEOUT_MS } from "@/lib/kiosk-machine";
 import { STOP_ID } from "@/lib/supabase";
 import type { SerialConnection } from "@/lib/use-board";
 import { useKiosk } from "@/lib/use-kiosk";
 import { useLiveNetwork } from "@/lib/use-live-network";
+import { useRoutes } from "@/lib/use-routes";
 import { useStopName } from "@/lib/use-stop";
 import { ConfirmStage } from "./ConfirmStage";
 import { ConnectBoardControl } from "./ConnectBoardControl";
@@ -17,6 +20,7 @@ import { DetectedStage } from "./DetectedStage";
 import { IdleStage } from "./IdleStage";
 import { KioskTopBar } from "./KioskTopBar";
 import { ListeningStage } from "./ListeningStage";
+import { RouteStrip } from "./RouteStrip";
 import { TicketStage } from "./TicketStage";
 
 const noopSubscribe = () => () => {};
@@ -101,6 +105,7 @@ export function KioskApp() {
     mockMode,
   });
   const network = useLiveNetwork();
+  const { routes } = useRoutes();
   const stopName = useStopName(STOP_ID);
 
   useEffect(() => {
@@ -114,7 +119,17 @@ export function KioskApp() {
 
   const ticketProps = (destination: string) => {
     const status = departureStatus(destination, network.buses);
-    return { destination, status, statusLine: ticketStatusLine(status) };
+    const tracked = trackBusFor(destination, network.buses, routes);
+    const below = tracked ? (
+      <RouteStrip
+        route={tracked.route}
+        progress={tracked.progress}
+        color={getDestination(destination)?.color ?? "var(--ink)"}
+        busId={tracked.bus.id}
+        caption={tracked.line}
+      />
+    ) : null;
+    return { destination, status, statusLine: ticketStatusLine(status), below };
   };
 
   return (
