@@ -6,11 +6,12 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Banner } from "@/components/Banner";
 import { Button } from "@/components/Button";
 import { HomeLink } from "@/components/HomeLink";
-import { DEMO_ROLES, HOME_FOR, isRole, ROLE_LABEL, safeNext, type Role } from "@/lib/auth";
+import { demoRoles, HOME_FOR, isRole, ROLE_LABEL, safeNext, signInErrorMessage, type Role } from "@/lib/auth";
 import { getSupabase } from "@/lib/supabase";
 import { signOut, useAccountState } from "@/lib/use-account";
 
 const DEMO_MODE = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
+const DEMO_ROLES = demoRoles(process.env.NEXT_PUBLIC_DEMO_ROLES);
 
 const DEMO_DETAIL: Record<Role, string> = {
   admin: "Everything, settings and users",
@@ -81,7 +82,8 @@ export function LoginScreen() {
         }
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      const status = typeof err === "object" && err !== null && "status" in err ? Number(err.status) : undefined;
+      setError(err instanceof Error ? signInErrorMessage(err.message, status) : "Something went wrong. Please try again.");
     } finally {
       setPending(null);
     }

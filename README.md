@@ -285,7 +285,11 @@ confirm**, same password for all five:
 
 They get their roles automatically on creation. Put that password in `DEMO_PASSWORD` and set
 `NEXT_PUBLIC_DEMO_MODE=true` to show **Demo login as…** on `/login`; the panel signs in through
-`/api/demo-login` on the server, so the password never reaches the browser. In Supabase →
+`/api/demo-login` on the server, so the password never reaches the browser.
+`NEXT_PUBLIC_DEMO_ROLES` picks the buttons (enforced by the server route too): unset means kiosk,
+dispatcher, driver and viewer. **Admin appears only if listed**; on a deployed site leave it out and
+sign in as `admin@tapselect.demo` with the password. If Supabase's per-network sign-in limit is hit
+(many people signing in at once), the page says so; the audience should use the Live board instead. In Supabase →
 Authentication → Sign In / Providers, keep **Email** on and turn **Confirm email** off so
 sign-ups work without email delivery.
 
