@@ -3,7 +3,6 @@ import {
   countByDestination,
   departureLabel,
   departureStatus,
-  ticketStatusLine,
   type Bus,
 } from "@/lib/departures";
 import { parseCreateTokenResult } from "@/lib/rpc";
@@ -53,14 +52,6 @@ describe("labels", () => {
     expect(departureLabel({ kind: "waiting" })).toBe("Waiting for dispatch");
     expect(departureLabel({ kind: "on_the_way", busId: "R3-07", etaMinutes: 6 })).toBe("R3-07 · 6 min");
     expect(departureLabel({ kind: "boarding", busId: "R3-07" })).toBe("Boarding");
-  });
-
-  it("formats the ticket status line", () => {
-    expect(ticketStatusLine({ kind: "waiting" })).toBe("Waiting for dispatch");
-    expect(ticketStatusLine({ kind: "on_the_way", busId: "R3-07", etaMinutes: 6 })).toBe(
-      "Bus R3-07 is on the way · about 6 min",
-    );
-    expect(ticketStatusLine({ kind: "boarding", busId: "R3-07" })).toBe("Your bus is here");
   });
 });
 

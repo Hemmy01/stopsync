@@ -2,8 +2,8 @@
 
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { Banner } from "@/components/Banner";
-import { departureStatus, ticketStatusLine } from "@/lib/departures";
 import { getDestination } from "@/lib/destinations";
+import { boardingNow, findTicket, queuePosition, ticketStatus } from "@/lib/queue";
 import { trackBusFor } from "@/lib/routes";
 import { STEP_TIMEOUT_MS } from "@/lib/kiosk-machine";
 import { STOP_ID } from "@/lib/supabase";
@@ -20,6 +20,7 @@ import { DetectedStage } from "./DetectedStage";
 import { IdleStage } from "./IdleStage";
 import { KioskTopBar } from "./KioskTopBar";
 import { ListeningStage } from "./ListeningStage";
+import { NowBoarding } from "./NowBoarding";
 import { RouteStrip } from "./RouteStrip";
 import { TicketStage } from "./TicketStage";
 
@@ -117,9 +118,12 @@ export function KioskApp() {
     return () => window.removeEventListener("keydown", onKey);
   }, [mockParam]);
 
-  const ticketProps = (destination: string) => {
-    const status = departureStatus(destination, network.buses);
-    const tracked = trackBusFor(destination, network.buses, routes);
+  // Live: the ticket's place in the queue and whether its bus has called it.
+  const ticketProps = (code: string, destination: string, positionAtCreation?: number) => {
+    const ticket = findTicket(network.tokens, code);
+    const position = ticket ? queuePosition(network.tokens, ticket) : (positionAtCreation ?? null);
+    const status = ticketStatus(ticket, destination, network.buses, position);
+    const tracked = status.kind === "on_the_way" ? trackBusFor(destination, network.buses, routes) : null;
     const below = tracked ? (
       <RouteStrip
         route={tracked.route}
@@ -129,7 +133,7 @@ export function KioskApp() {
         caption={tracked.line}
       />
     ) : null;
-    return { destination, status, statusLine: ticketStatusLine(status), below };
+    return { destination, status, position: position ?? undefined, below };
   };
 
   return (
@@ -195,8 +199,7 @@ export function KioskApp() {
               heading="Here's your number"
               subheading="Watch this screen or the board below for your bus."
               code={state.ticket.code}
-              position={state.ticket.position}
-              {...ticketProps(state.ticket.destination)}
+              {...ticketProps(state.ticket.code, state.ticket.destination, state.ticket.position)}
               timeoutMs={STEP_TIMEOUT_MS.ticket ?? 12_000}
               onDone={cancel}
             />
@@ -208,7 +211,7 @@ export function KioskApp() {
               heading="You're already in the queue"
               subheading="One ticket per card. Here's the one you have."
               code={state.code}
-              {...ticketProps(state.destination)}
+              {...ticketProps(state.code, state.destination)}
               timeoutMs={STEP_TIMEOUT_MS.duplicate ?? 12_000}
               onDone={cancel}
             />
@@ -216,6 +219,7 @@ export function KioskApp() {
         </div>
       </main>
 
+      <NowBoarding boardings={boardingNow(network.buses, network.tokens)} />
       <DepartureStrip buses={network.buses} waiting={network.waiting} loading={network.loading} />
 
       {drawerOpen ? <DebugDrawer mock={board.mock} log={board.log} onClose={() => setDrawerToggle(false)} /> : null}

@@ -1,6 +1,5 @@
 // Derives what passengers see about each route from live bus rows. Pure.
 
-import { formatEta } from "./eta";
 import type { Tables } from "./database.types";
 
 export type Bus = Tables<"buses">;
@@ -34,18 +33,6 @@ export function departureLabel(status: DepartureStatus): string {
       return status.etaMinutes == null ? `${status.busId} · on the way` : `${status.busId} · ${status.etaMinutes} min`;
     case "boarding":
       return "Boarding";
-  }
-}
-
-/** Sentence for the passenger's ticket. */
-export function ticketStatusLine(status: DepartureStatus): string {
-  switch (status.kind) {
-    case "waiting":
-      return "Waiting for dispatch";
-    case "on_the_way":
-      return `Bus ${status.busId} is on the way · ${formatEta(status.etaMinutes)}`;
-    case "boarding":
-      return "Your bus is here";
   }
 }
 
