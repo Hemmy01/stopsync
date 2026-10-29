@@ -3,6 +3,7 @@
 import type { Tables } from "./database.types";
 import type { Bus } from "./departures";
 import { getDestination } from "./destinations";
+import type { DispatchPlaces } from "./occupancy";
 import { minutesSince } from "./time";
 
 export type Token = Tables<"queue_tokens">;
@@ -13,6 +14,9 @@ export type ConfigRow = Tables<"config">;
 export interface DestinationSummary {
   waiting: number;
   oldestWaitMin: number | null;
+  /** Waiting passengers the buses already on the way have no room for. */
+  uncovered: number;
+  /** uncovered ÷ free places on the next bus, as run_dispatch computes it. */
   loadPct: number;
   highLoad: boolean;
 }
@@ -20,7 +24,7 @@ export interface DestinationSummary {
 export function summarizeDestination(
   code: string,
   tokens: readonly Token[],
-  capacity: number,
+  places: DispatchPlaces,
   releaseLoadPct: number,
   now: Date | null,
 ): DestinationSummary {
@@ -29,12 +33,14 @@ export function summarizeDestination(
     (min, t) => (min === null || t.created_at < min ? t.created_at : min),
     null,
   );
-  const loadPct = capacity > 0 ? Math.round((waiting.length / capacity) * 100) : 0;
+  const uncovered = Math.max(waiting.length - places.onTheWayFree, 0);
+  const loadPct = Math.round((uncovered / Math.max(places.nextFree, 1)) * 100);
   return {
     waiting: waiting.length,
     oldestWaitMin: oldest === null || now === null ? null : minutesSince(oldest, now),
+    uncovered,
     loadPct,
-    highLoad: waiting.length > 0 && loadPct >= releaseLoadPct,
+    highLoad: uncovered > 0 && loadPct >= releaseLoadPct,
   };
 }
 
@@ -48,9 +54,8 @@ export function computeTotals(tokens: readonly Token[], buses: readonly Bus[], d
   const dayStart = new Date(dayStartISO).getTime();
   return {
     waiting: tokens.filter((t) => t.status === "waiting").length,
-    boardedToday: tokens.filter(
-      (t) => t.status === "boarded" && t.boarded_at !== null && new Date(t.boarded_at).getTime() >= dayStart,
-    ).length,
+    // Riders who already got off at the terminal ('completed') boarded too.
+    boardedToday: tokens.filter((t) => t.boarded_at !== null && new Date(t.boarded_at).getTime() >= dayStart).length,
     onTheWay: buses.filter((b) => b.status === "on_the_way").length,
   };
 }
@@ -91,7 +96,7 @@ export function pendingByDestination(decisions: readonly Decision[]): Record<str
   return result;
 }
 
-export type ActivityKind = "token" | "recommendation" | "approved" | "dismissed" | "released" | "departed" | "arrived" | "reset";
+export type ActivityKind = "token" | "recommendation" | "approved" | "dismissed" | "released" | "departed" | "arrived" | "completed" | "occupancy" | "reset";
 
 export interface ActivityItem {
   key: string;
@@ -102,6 +107,8 @@ export interface ActivityItem {
 }
 
 const destName = (code: string) => getDestination(code)?.name ?? code;
+
+const signed = (n: number) => (n > 0 ? `+${n}` : String(n));
 
 const METHOD_TEXT: Record<string, string> = {
   voice: "voice",
@@ -159,15 +166,25 @@ export function buildActivity(
     const destination = busDest.get(e.bus_id) ?? null;
     const via = e.source === "gps" ? "GPS" : e.source === "manual" ? "driver" : "HQ";
     const kind: ActivityKind =
-      e.event === "released" || e.event === "departed" || e.event === "arrived" ? e.event : "reset";
+      e.event === "released" ||
+      e.event === "departed" ||
+      e.event === "arrived" ||
+      e.event === "completed" ||
+      e.event === "occupancy"
+        ? e.event
+        : "reset";
     const text =
       kind === "released"
         ? `Bus ${e.bus_id} released${destination ? ` to ${destName(destination)}` : ""}`
         : kind === "departed"
           ? `Bus ${e.bus_id} left its terminal (${via})`
           : kind === "arrived"
-          ? `Bus ${e.bus_id} arrived (${via}) · ${e.boarded_count ?? 0} boarded`
-            : `Bus ${e.bus_id} back at the terminal`;
+            ? `Bus ${e.bus_id} arrived (${via}) · ${e.boarded_count ?? 0} boarded`
+            : kind === "completed"
+              ? `Bus ${e.bus_id} back at the terminal (${via}) · ${e.boarded_count ?? 0} got off`
+              : kind === "occupancy"
+                ? `Driver corrected ${e.bus_id}: ${signed(e.delta ?? 0)} → ${e.occupancy ?? 0} on board`
+                : `Bus ${e.bus_id} back at the terminal`;
     items.push({ key: `e-${e.id}`, at: e.created_at, kind, destination, text });
   }
 

@@ -12,6 +12,7 @@ import {
   summarizeDestination,
 } from "@/lib/dashboard";
 import { DESTINATIONS } from "@/lib/destinations";
+import { dispatchPlaces, totalPlaces } from "@/lib/occupancy";
 import {
   approveDecision,
   dismissDecision,
@@ -75,7 +76,12 @@ export function DashboardApp() {
     };
   }, [data]);
 
-  const capacityOf = (code: string) => data?.destinations.find((d) => d.code === code)?.bus_capacity ?? 70;
+  // Seats + standing of the route's buses (bus_capacity is the fallback for a route with none).
+  const capacityOf = (code: string) => {
+    const bus = data?.buses.find((b) => b.destination === code);
+    return bus ? totalPlaces(bus) : (data?.destinations.find((d) => d.code === code)?.bus_capacity ?? 70);
+  };
+  const placesOf = (code: string) => dispatchPlaces(code, data?.buses ?? [], capacityOf(code));
 
   return (
     <div className="min-h-dvh">
@@ -112,8 +118,9 @@ export function DashboardApp() {
                 code={d.code}
                 name={d.name}
                 capacity={capacityOf(d.code)}
+                places={placesOf(d.code)}
                 releaseLoadPct={derived.releaseLoadPct}
-                summary={summarizeDestination(d.code, data.tokens, capacityOf(d.code), derived.releaseLoadPct, now)}
+                summary={summarizeDestination(d.code, data.tokens, placesOf(d.code), derived.releaseLoadPct, now)}
                 buses={data.buses.filter((b) => b.destination === d.code)}
                 pending={derived.pending[d.code]}
                 actions={actions}
