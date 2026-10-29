@@ -298,6 +298,41 @@ export type Database = {
           },
         ]
       }
+      profiles: {
+        Row: {
+          bus_id: string | null
+          created_at: string
+          email: string | null
+          id: string
+          name: string | null
+          role: string
+        }
+        Insert: {
+          bus_id?: string | null
+          created_at?: string
+          email?: string | null
+          id: string
+          name?: string | null
+          role?: string
+        }
+        Update: {
+          bus_id?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string | null
+          role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_bus_id_fkey"
+            columns: ["bus_id"]
+            isOneToOne: false
+            referencedRelation: "buses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       queue_tokens: {
         Row: {
           boarded_at: string | null
@@ -534,6 +569,7 @@ export type Database = {
         Args: { p_bus: string; p_delta: number }
         Returns: Json
       }
+      app_role: { Args: never; Returns: string }
       approve_decision: { Args: { p_decision: number }; Returns: Json }
       board_queue: { Args: { p_bus: string; p_stop: string }; Returns: Json }
       bus_free_places: {
@@ -562,11 +598,16 @@ export type Database = {
         }
         Returns: Json
       }
+      demo_role_for: { Args: { p_email: string }; Returns: string }
       dismiss_decision: { Args: { p_decision: number }; Returns: Json }
+      drives_bus: { Args: { p_bus: string }; Returns: boolean }
+      expire_waiting_tokens: { Args: { p_stops: string[] }; Returns: number }
+      has_role: { Args: { p_roles: string[] }; Returns: boolean }
       haversine_m: {
         Args: { p_lat1: number; p_lat2: number; p_lng1: number; p_lng2: number }
         Returns: number
       }
+      is_trusted_caller: { Args: never; Returns: boolean }
       kiosk_stop_id: { Args: never; Returns: string }
       log_selection: {
         Args: {
@@ -588,6 +629,7 @@ export type Database = {
         Args: { p_decision: number; p_source: string }
         Returns: Json
       }
+      require_role: { Args: { p_allowed: boolean }; Returns: undefined }
       reset_bus: { Args: { p_bus: string }; Returns: Json }
       reset_demo: { Args: never; Returns: Json }
       route_progress: {
@@ -598,6 +640,10 @@ export type Database = {
         }[]
       }
       run_dispatch: { Args: never; Returns: undefined }
+      set_user_role: {
+        Args: { p_bus?: string; p_role: string; p_user: string }
+        Returns: Json
+      }
       update_bus_location:
         | {
             Args: { p_bus: string; p_lat: number; p_lng: number }
