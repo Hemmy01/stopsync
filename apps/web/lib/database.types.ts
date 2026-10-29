@@ -504,6 +504,7 @@ export type Database = {
         Returns: Json
       }
       approve_decision: { Args: { p_decision: number }; Returns: Json }
+      board_queue: { Args: { p_bus: string; p_stop: string }; Returns: Json }
       bus_free_places: {
         Args: { b: Database["public"]["Tables"]["buses"]["Row"] }
         Returns: number
@@ -548,6 +549,10 @@ export type Database = {
         Returns: Json
       }
       prune_bus_positions: { Args: never; Returns: number }
+      release_for_decision: {
+        Args: { p_decision: number; p_source: string }
+        Returns: Json
+      }
       reset_bus: { Args: { p_bus: string }; Returns: Json }
       reset_demo: { Args: never; Returns: Json }
       route_progress: {
