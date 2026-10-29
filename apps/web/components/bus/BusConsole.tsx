@@ -1,19 +1,16 @@
-import { MapPin, Navigation, Square } from "lucide-react";
-import { Banner } from "@/components/Banner";
+import type { ComponentProps } from "react";
+import { MapPin } from "lucide-react";
 import { Button } from "@/components/Button";
 import { RouteBadge } from "@/components/RouteBadge";
 import type { Bus } from "@/lib/departures";
 import { getDestination } from "@/lib/destinations";
-import { formatDistance } from "@/lib/geo";
-import { formatKigaliTime } from "@/lib/time";
-import type { TrackerState } from "@/lib/use-bus-tracker";
 import { BUS_STATUS_LABEL } from "./labels";
+import { TrackingPanel } from "./TrackingPanel";
 
 interface BusConsoleProps {
   bus: Bus;
-  tracker: TrackerState;
-  onStart: () => void;
-  onStop: () => void;
+  /** Everything the tracking panel needs besides the bus and stop name. */
+  tracking: Omit<ComponentProps<typeof TrackingPanel>, "bus" | "stopName">;
   onArrived: () => void;
   arriving: boolean;
   arrivalMessage: string | null;
@@ -39,12 +36,10 @@ function StatusLine({ bus }: { bus: Bus }) {
   return <p className="text-lg text-muted">At terminal · waiting for HQ to release</p>;
 }
 
-/** The driver's controls for one bus: share GPS, and "I've arrived". */
+/** The driver's controls for one bus: automatic GPS tracking, and "I've arrived". */
 export function BusConsole({
   bus,
-  tracker,
-  onStart,
-  onStop,
+  tracking,
   onArrived,
   arriving,
   arrivalMessage,
@@ -52,7 +47,6 @@ export function BusConsole({
   stopName,
 }: BusConsoleProps) {
   const dest = getDestination(bus.destination);
-  const result = tracker.lastResult;
 
   return (
     <div className="space-y-5">
@@ -69,68 +63,7 @@ export function BusConsole({
         <StatusLine bus={bus} />
       </div>
 
-      {tracker.error ? (
-        <Banner tone="danger" title="Location is off">
-          {tracker.error}
-        </Banner>
-      ) : null}
-      {tracker.warning && !tracker.error ? <Banner tone="warn" title={tracker.warning} /> : null}
-
-      <section className="rounded-card border border-line bg-surface p-4">
-        <h2 className="text-lg">Location sharing</h2>
-        {tracker.sharing ? (
-          <Button
-            variant="ink"
-            size="xl"
-            className="mt-3 w-full"
-            onClick={onStop}
-            icon={<Square aria-hidden className="h-5 w-5" />}
-          >
-            Stop sharing
-          </Button>
-        ) : (
-          <Button
-            variant="primary"
-            size="xl"
-            className="mt-3 w-full"
-            onClick={onStart}
-            icon={<Navigation aria-hidden className="h-6 w-6" />}
-          >
-            Start sharing location
-          </Button>
-        )}
-
-        <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
-          <div>
-            <dt className="text-muted">Last sent</dt>
-            <dd className="num text-lg font-semibold">
-              {tracker.lastSentAt ? formatKigaliTime(tracker.lastSentAt, true) : "–"}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-muted">Accuracy</dt>
-            <dd className="num text-lg font-semibold">{tracker.accuracyM !== null ? `±${tracker.accuracyM} m` : "–"}</dd>
-          </div>
-          <div>
-            <dt className="text-muted">To {stopName}</dt>
-            <dd className="num text-lg font-semibold">
-              {result?.distanceM != null ? formatDistance(result.distanceM) : "–"}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-muted">ETA</dt>
-            <dd className="num text-lg font-semibold">{result?.etaMinutes != null ? `${result.etaMinutes} min` : "–"}</dd>
-          </div>
-        </dl>
-        {bus.status === "at_terminal" ? (
-          <p className="mt-3 text-sm text-muted">
-            Your position is saved. Distance and ETA start once HQ releases this bus.
-          </p>
-        ) : null}
-        {bus.status === "on_the_way" ? (
-          <p className="mt-3 text-sm text-muted">Sends at most every 5 seconds. Arrival is automatic near the stop.</p>
-        ) : null}
-      </section>
+      <TrackingPanel bus={bus} stopName={stopName} {...tracking} />
 
       <section>
         <Button
