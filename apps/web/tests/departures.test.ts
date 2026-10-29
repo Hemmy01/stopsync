@@ -23,6 +23,9 @@ function bus(id: string, destination: string, status: Bus["status"], eta: number
     next_stop_id: null,
     stops_remaining: null,
     distance_remaining_m: null,
+    seats: 40,
+    standing: 30,
+    occupancy: 0,
   };
 }
 

@@ -19,8 +19,10 @@ export type Database = {
           boarded_count: number | null
           bus_id: string
           created_at: string
+          delta: number | null
           event: string
           id: number
+          occupancy: number | null
           source: string
           stop_id: string | null
         }
@@ -28,8 +30,10 @@ export type Database = {
           boarded_count?: number | null
           bus_id: string
           created_at?: string
+          delta?: number | null
           event: string
           id?: never
+          occupancy?: number | null
           source: string
           stop_id?: string | null
         }
@@ -37,8 +41,10 @@ export type Database = {
           boarded_count?: number | null
           bus_id?: string
           created_at?: string
+          delta?: number | null
           event?: string
           id?: never
+          occupancy?: number | null
           source?: string
           stop_id?: string | null
         }
@@ -109,7 +115,10 @@ export type Database = {
           lng: number | null
           location_updated_at: string | null
           next_stop_id: string | null
+          occupancy: number
           released_at: string | null
+          seats: number
+          standing: number
           status: string
           stops_remaining: number | null
         }
@@ -124,7 +133,10 @@ export type Database = {
           lng?: number | null
           location_updated_at?: string | null
           next_stop_id?: string | null
+          occupancy?: number
           released_at?: string | null
+          seats?: number
+          standing?: number
           status?: string
           stops_remaining?: number | null
         }
@@ -139,7 +151,10 @@ export type Database = {
           lng?: number | null
           location_updated_at?: string | null
           next_stop_id?: string | null
+          occupancy?: number
           released_at?: string | null
+          seats?: number
+          standing?: number
           status?: string
           stops_remaining?: number | null
         }
@@ -268,8 +283,10 @@ export type Database = {
       queue_tokens: {
         Row: {
           boarded_at: string | null
+          bus_id: string | null
           card_id: string | null
           code: string
+          completed_at: string | null
           confidence: number | null
           created_at: string
           destination: string
@@ -280,8 +297,10 @@ export type Database = {
         }
         Insert: {
           boarded_at?: string | null
+          bus_id?: string | null
           card_id?: string | null
           code: string
+          completed_at?: string | null
           confidence?: number | null
           created_at?: string
           destination: string
@@ -292,8 +311,10 @@ export type Database = {
         }
         Update: {
           boarded_at?: string | null
+          bus_id?: string | null
           card_id?: string | null
           code?: string
+          completed_at?: string | null
           confidence?: number | null
           created_at?: string
           destination?: string
@@ -303,6 +324,13 @@ export type Database = {
           stop_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "queue_tokens_bus_id_fkey"
+            columns: ["bus_id"]
+            isOneToOne: false
+            referencedRelation: "buses"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "queue_tokens_destination_fkey"
             columns: ["destination"]
@@ -471,7 +499,19 @@ export type Database = {
       }
     }
     Functions: {
+      adjust_occupancy: {
+        Args: { p_bus: string; p_delta: number }
+        Returns: Json
+      }
       approve_decision: { Args: { p_decision: number }; Returns: Json }
+      bus_free_places: {
+        Args: { b: Database["public"]["Tables"]["buses"]["Row"] }
+        Returns: number
+      }
+      complete_trip: {
+        Args: { p_bus: string; p_source?: string }
+        Returns: Json
+      }
       config_value: {
         Args: { p_default: number; p_key: string }
         Returns: number
