@@ -113,20 +113,108 @@ static int orient(int gesture) {
   return y > 0 ? GESTURE_UP : GESTURE_DOWN;
 }
 
-static bool detectorBegin(const char**) {
-  APDS.setGestureSensitivity(SWIPE_SENSITIVITY);
+// The library's own decoder checks left, right, down, up in that order, so any vertical
+// wobble above its threshold overrides a sideways swipe (left/right came out as down/up).
+// We read the sensor's gesture FIFO ourselves, same registers and bus as the library,
+// and let the axis that moved most win.
+#include <Wire.h>
+
+#if defined(ARDUINO_ARDUINO_NANO33BLE)
+static TwoWire& apdsWire = Wire1;  // the bus the library uses on this board
+#else
+static TwoWire& apdsWire = Wire;
+#endif
+static const uint8_t APDS_ADDR = 0x39;
+static const uint8_t REG_ENABLE = 0x80, REG_GFLVL = 0xAE, REG_GSTATUS = 0xAF, REG_GFIFO_U = 0xFC;
+
+static bool apdsRead(uint8_t reg, uint8_t* buf, uint8_t len) {
+  apdsWire.beginTransmission(APDS_ADDR);
+  apdsWire.write(reg);
+  if (apdsWire.endTransmission() != 0) return false;
+  if (apdsWire.requestFrom(APDS_ADDR, len) != len) return false;
+  for (uint8_t i = 0; i < len; i++) buf[i] = apdsWire.read();
   return true;
 }
 
-static void detectorReset() {}
+static bool apdsWrite(uint8_t reg, uint8_t value) {
+  apdsWire.beginTransmission(APDS_ADDR);
+  apdsWire.write(reg);
+  apdsWire.write(value);
+  return apdsWire.endTransmission() == 0;
+}
+
+// Sensor thread only.
+static bool handAway = true;   // last frame was below SWIPE_PRESENCE on all four photodiodes
+static bool haveEntry = false;
+static int entryX = 0, entryY = 0, lastX = 0, lastY = 0;
+static uint32_t listeningSince = 0;
+
+static bool detectorBegin(const char** error) {
+  uint8_t enable;
+  // APDS.begin() configured the gesture engine; switching it on (GEN) is left to us.
+  if (!apdsRead(REG_ENABLE, &enable, 1) || !apdsWrite(REG_ENABLE, enable | 0x40)) {
+    *error = "gesture=APDS9960 gesture engine did not start";
+    return false;
+  }
+  return true;
+}
+
+static void detectorReset() { listeningSince = millis(); }
+
+// A hand left the sensor: decide the swipe from how the U-D and R-L balance changed.
+static void finishSwipe(bool on, uint32_t forSession) {
+  haveEntry = false;
+  int dx = (entryX - lastX) * SWIPE_X_GAIN_PCT / 100;  // same sign convention as the library: < 0 = left
+  int dy = entryY - lastY;                               //                                        < 0 = down
+  if (!on) return;
+  int ax = abs(dx), ay = abs(dy);
+  if (ax < SWIPE_MIN_DELTA && ay < SWIPE_MIN_DELTA) {
+    // Tiny flickers are sensor noise: report only movements worth a passenger's attention.
+    if (ax + ay >= SWIPE_MIN_DELTA / 2) pushEvent(forSession, -1, 1.0f, "unclear,dx=%d,dy=%d", dx, dy);
+    return;
+  }
+  if (millis() - listeningSince < SWIPE_SETTLE_MS) {
+    // Usually the hand coming back from the previous try.
+    pushEvent(forSession, -1, 1.0f, "early,dx=%d,dy=%d", dx, dy);
+    return;
+  }
+  int gesture = ax > ay ? (dx < 0 ? GESTURE_LEFT : GESTURE_RIGHT) : (dy < 0 ? GESTURE_DOWN : GESTURE_UP);
+  gesture = orient(gesture);
+  const char* label = SWIPE_LABELS[gesture];
+  pushEvent(forSession, destinationForGestureLabel(label), 1.0f, "%s,dx=%d,dy=%d", label, dx, dy);
+}
 
 static void detectorStep(bool on, uint32_t forSession) {
-  // Poll even when idle so the sensor's FIFO never holds a stale swipe.
-  if (!APDS.gestureAvailable()) return;
-  int gesture = orient(APDS.readGesture());
-  if (!on || gesture == GESTURE_NONE) return;
-  const char* label = SWIPE_LABELS[gesture];
-  pushEvent(forSession, destinationForGestureLabel(label), 1.0f, "%s", label);
+  // Drain the FIFO even when idle so it never holds a stale swipe.
+  uint8_t status, level;
+  if (!apdsRead(REG_GSTATUS, &status, 1) || !(status & 0x01)) return;  // GVALID
+  if (!apdsRead(REG_GFLVL, &level, 1) || level == 0) return;
+  if (level > 32) level = 32;
+
+  uint8_t fifo[32 * 4];
+  // At most 8 datasets (32 bytes) per transfer keeps within the Wire buffer.
+  for (uint8_t done = 0; done < level;) {
+    uint8_t chunk = level - done > 8 ? 8 : level - done;
+    if (!apdsRead(REG_GFIFO_U, fifo + done * 4, chunk * 4)) return;
+    done += chunk;
+  }
+
+  for (uint8_t i = 0; i < level; i++) {
+    int u = fifo[i * 4], d = fifo[i * 4 + 1], l = fifo[i * 4 + 2], r = fifo[i * 4 + 3];
+    if (u < SWIPE_PRESENCE && d < SWIPE_PRESENCE && l < SWIPE_PRESENCE && r < SWIPE_PRESENCE) {
+      if (haveEntry) finishSwipe(on, forSession);
+      handAway = true;
+      continue;
+    }
+    lastX = r - l;
+    lastY = u - d;
+    if (handAway) {
+      handAway = false;
+      haveEntry = true;
+      entryX = lastX;
+      entryY = lastY;
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------

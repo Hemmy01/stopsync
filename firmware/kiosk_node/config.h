@@ -55,7 +55,7 @@ or GESTURE_RULE with the voice model, or two builds. See firmware/README.md."
 // ---------------------------------------------------------------------------
 #define STOP_ID   "STOP-01"
 #define BAUD_RATE 115200
-#define FW_VERSION "0.3.0"           // reported on connect: LOG,voice=…,gesture=…,fw=<version>
+#define FW_VERSION "0.3.1"           // reported on connect: LOG,voice=…,gesture=…,fw=<version>
 #define SERIAL_WAIT_MS 2000          // boot waits at most this long for a host, then runs anyway
 
 // ---------------------------------------------------------------------------
@@ -156,17 +156,29 @@ static inline int destinationForTapLabel(const char* label) {
 //   says swipe_right       -> SWIPE_FLIP_X 1
 //   says swipe_up / _down  -> SWIPE_SWAP_AXES 1 (then check the flips again)
 // Applied in this order: swap, then flip X, then flip Y.
+// Our kiosk board as mounted for the demo (measured 2026-10-29): swipe left read as the
+// sensor's up and swipe up as its right, so SWIPE_SWAP_AXES 1 + SWIPE_FLIP_X 1.
 // ---------------------------------------------------------------------------
 #ifndef SWIPE_SWAP_AXES
-#define SWIPE_SWAP_AXES 0        // 1 = board turned 90 degrees: left/right <-> up/down
+#define SWIPE_SWAP_AXES 1        // 1 = board turned 90 degrees: left/right <-> up/down
 #endif
 #ifndef SWIPE_FLIP_X
-#define SWIPE_FLIP_X    0        // 1 = left <-> right
+#define SWIPE_FLIP_X    1        // 1 = left <-> right
 #endif
 #ifndef SWIPE_FLIP_Y
 #define SWIPE_FLIP_Y    0        // 1 = up <-> down
 #endif
-#define SWIPE_SENSITIVITY 80     // 1..100, library default 80; raise if swipes are missed
+// Our own decoder (gestures.cpp) reads the sensor's gesture FIFO; tune with the dx/dy in
+// LOG,gesture=swipe_left,dx=-64,dy=12 lines.
+#define SWIPE_PRESENCE    30     // all four photodiodes below this = no hand (library uses 30)
+#define SWIPE_MIN_DELTA   20     // smaller movement on both axes = "unclear" (library default 20)
+#define SWIPE_SETTLE_MS   400    // swipes finishing this soon after START are ignored ("early")
+// Weight of the sensor's own left/right photodiodes vs up/down, in percent (before the
+// orientation flags). Leave at 100 unless the dx/dy logs show one axis always losing to
+// the other's wobble; a passenger's natural arm arc is a bigger factor than the sensor.
+#ifndef SWIPE_X_GAIN_PCT
+#define SWIPE_X_GAIN_PCT  100
+#endif
 
 // ---------------------------------------------------------------------------
 // Sensor thread: the APDS9960 is read on its own mbed RTOS thread, so voice
