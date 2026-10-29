@@ -121,7 +121,7 @@ export function BusApp() {
         </Link>
         <div className="flex items-center gap-4">
           <KigaliClock className="text-xl font-medium" />
-          <AccountBadge />
+          <AccountBadge compact />
         </div>
       </header>
 
