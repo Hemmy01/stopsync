@@ -2,9 +2,11 @@
 // Gesture reliability trials against a real board, no kiosk needed. No dependencies.
 //
 //   node firmware/scripts/gesture-trials.mjs --port /dev/cu.usbmodem1101 --label after
-//        [--tries 20] [--timeout 8] [--only REM,DTN] [--no-control] [--out FILE]
+//        [--tries 20] [--timeout 8] [--only REM,DTN] [--no-control] [--auto] [--out FILE]
 //
 // For each stop: press Enter, then do its gesture once every time the prompt says GO.
+// --auto: no Enter presses; the Mac speaks each instruction (macOS `say`) and the LED
+// breathing blue means "go", so nobody needs to watch the terminal.
 // The script sends START, waits for SELECT (or the timeout), sends CANCEL, and repeats.
 // A final control block checks that standing still selects nothing.
 // Prints a results table and appends it to ml/results/gesture-trials.md.
@@ -12,9 +14,10 @@
 // Close the kiosk tab and every serial monitor first: only one program can open the port.
 
 import { execFileSync } from "node:child_process";
-import { appendFileSync, constants, createReadStream, openSync, readFileSync, writeSync } from "node:fs";
+import { appendFileSync, constants, openSync, readFileSync, writeSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { createInterface } from "node:readline/promises";
+import { isatty, ReadStream } from "node:tty";
 import { fileURLToPath } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../..");
@@ -25,10 +28,11 @@ const TAP_HINTS = { one_tap: "Tap once", two_taps: "Tap twice", three_taps: "Tap
 const SWIPE_ARROWS = { left: "←", right: "→", up: "↑", down: "↓" };
 
 function parseArgs(argv) {
-  const args = { tries: 20, timeout: 8, control: true, only: null, port: null, label: null, out: DEFAULT_OUT };
+  const args = { tries: 20, timeout: 8, control: true, auto: false, only: null, port: null, label: null, out: DEFAULT_OUT };
   for (let i = 0; i < argv.length; i++) {
     const [key, value] = [argv[i], argv[i + 1]];
     if (key === "--no-control") args.control = false;
+    else if (key === "--auto") args.auto = true;
     else if (key === "--port") (args.port = value), i++;
     else if (key === "--label") (args.label = value), i++;
     else if (key === "--tries") (args.tries = Number(value)), i++;
@@ -57,16 +61,22 @@ function gestureFor(dest, mode) {
   return `${SWIPE_ARROWS[direction] ?? ""} Swipe ${direction}`.trim();
 }
 
-/** Line-based serial connection over a tty, configured with stty on the open descriptor. */
+/**
+ * Line-based serial connection over a tty, configured with stty on the open descriptor.
+ * Reads go through tty.ReadStream (event-driven): a blocking fs read on a macOS serial
+ * port stalls the event loop and even process.exit.
+ */
 function openBoard(port) {
   const fd = openSync(port, constants.O_RDWR | constants.O_NOCTTY);
+  if (!isatty(fd)) throw new Error(`${port} is not a serial port`);
   // stty acts on its stdin: our descriptor, so the settings hold while we keep it open.
   execFileSync("stty", ["115200", "raw", "-echo", "-hupcl"], { stdio: [fd, "ignore", "pipe"] });
 
   const waiters = [];
   const listeners = [];
   let pending = "";
-  const stream = createReadStream("", { fd, encoding: "utf8", autoClose: false });
+  const stream = new ReadStream(fd);
+  stream.setEncoding("utf8");
   stream.on("data", (chunk) => {
     pending += chunk;
     const lines = pending.split(/\r?\n/);
@@ -109,6 +119,16 @@ function openBoard(port) {
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/** Speak (macOS) and print. Blocks until the speech ends, so the mic hears it before START. */
+function speak(text) {
+  console.log(`\n» ${text}`);
+  try {
+    execFileSync("say", ["-r", "190", text]);
+  } catch {
+    // No `say` (not macOS): the printed line has to do.
+  }
+}
 const median = (xs) => {
   if (xs.length === 0) return null;
   const s = [...xs].sort((a, b) => a - b);
@@ -141,7 +161,13 @@ async function main() {
   const args = parseArgs(process.argv.slice(2));
   let destinations = readDestinations();
   if (args.only) destinations = destinations.filter((d) => args.only.includes(d.code));
-  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  const rl = args.auto ? null : createInterface({ input: process.stdin, output: process.stdout });
+  /** Wait for Enter, or in --auto speak the instruction and give a few seconds to get ready. */
+  const ready = async (text, spoken) => {
+    if (!args.auto) return void (await rl.question(`${text} Press Enter to start.`));
+    speak(spoken);
+    await sleep(4000);
+  };
 
   const board = openBoard(args.port);
   const boot = { hello: null, modes: null };
@@ -163,9 +189,14 @@ async function main() {
   const rows = [];
   for (const dest of destinations) {
     const gesture = gestureFor(dest, mode);
-    await rl.question(`Next: ${gesture}  (expects ${dest.code})  ×${args.tries}. Press Enter to start.`);
+    const spokenGesture = gesture.replace(/^[^A-Za-z]+/, "");
+    await ready(
+      `Next: ${gesture}  (expects ${dest.code})  ×${args.tries}.`,
+      `Next: ${spokenGesture}, ${args.tries} times. Wait for the blue light each time.`,
+    );
     const results = [];
     for (let n = 1; n <= args.tries; n++) {
+      if (args.auto) execFileSafe("say", ["-r", "220", n === 1 ? spokenGesture : String(n)]);
       const r = await runTry(board, args.timeout * 1000, () => process.stdout.write(`  [${n}/${args.tries}] GO: ${gesture} … `));
       results.push(r);
       const verdict = r.code === dest.code && r.method === "gesture" ? "hit" : r.code ? `WRONG ${r.code} (${r.method})` : "miss";
@@ -184,7 +215,10 @@ async function main() {
   }
 
   if (args.control) {
-    await rl.question(`Control: stand in front of the board and do nothing ×${args.tries}. Press Enter to start.`);
+    await ready(
+      `Control: stand in front of the board and do nothing ×${args.tries}.`,
+      `Last part. Keep your hands away and stay quiet for about ${Math.ceil((args.tries * Math.min(args.timeout, 5)) / 60) + 1} minutes.`,
+    );
     const quietMs = Math.min(args.timeout, 5) * 1000;
     let falseSelects = 0;
     const wrong = [];
@@ -197,7 +231,8 @@ async function main() {
     rows.push({ label: "Do nothing → (none)", hits: args.tries - falseSelects, wrong: wrong.join(", "), missed: 0, medianMs: null });
   }
 
-  rl.close();
+  rl?.close();
+  if (args.auto) speak("Finished. Thank you.");
 
   const date = new Date().toISOString().slice(0, 10);
   const table = [
@@ -220,6 +255,14 @@ async function main() {
   console.log(`Appended to ${args.out}`);
   // Exit closes the port. (Closing a tty while a read is pending can block on macOS.)
   process.exit(0);
+}
+
+function execFileSafe(cmd, argv) {
+  try {
+    execFileSync(cmd, argv);
+  } catch {
+    // Optional cue only.
+  }
 }
 
 main().catch((err) => {
