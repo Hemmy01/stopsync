@@ -70,5 +70,46 @@ Target for the demo: every gesture ≥ 18/20 (90%) and 0 false selects in the co
 
 ## Results
 
+### Summary (2026-10-29, same person, board in its demo mounting)
+
+| | Before: fw 0.2.0 tap rules | After: fw 0.3.1 swipes |
+|---|---|---|
+| Remera | Tap once 16/20 (80%) | ← Swipe left 19/20 (95%) |
+| Downtown | Tap twice **0/20** (read as hold) | → Swipe right 19/20 (95%) |
+| Nyabugogo | Tap 3 times **0/20** (read as hold) | ↑ Swipe up 17/20 (85%) |
+| Kimironko | Hold 15/20 (75%) | ↓ Swipe down 18/20 (90%) |
+| **All four** | **31/80 (39%)** | **73/80 (91%)** |
+| Wrong stop selected | 21 | 2 |
+| Do nothing: false selects | 0/20 | 0/20 |
+
+Getting there took two fixes found during testing: the Arduino_APDS9960 library's own direction
+decoder reports any sideways swipe with vertical wobble as up/down (we decode the FIFO ourselves),
+and the board needed `SWIPE_SWAP_AXES 1` + `SWIPE_FLIP_X 1` for its mounting. Swipe up is the one
+below the 90% target: swipe straight, not on an arc.
+
 <!-- gesture-trials.mjs appends below this line -->
+
+### after (fw 0.3.1 swipes) · 2026-10-29 · fw 0.3.1 · gesture=swipe
+
+`voice=model,gesture=swipe,fw=0.3.1` · 20 tries each · 8 s timeout
+
+| Gesture → stop | Correct | Wrong stop | Missed | Hit rate | Median time |
+|---|---|---|---|---|---|
+| ← Swipe left → REM | 19/20 | — | 1 | 95% | 1023 ms |
+| → Swipe right → DTN | 19/20 | — | 1 | 95% | 617 ms |
+| ↑ Swipe up → NYA | 17/20 | KIM/gesture | 2 | 85% | 2286 ms |
+| ↓ Swipe down → KIM | 18/20 | NYA/gesture | 1 | 90% | 651 ms |
+| Do nothing → (none) | 20/20 | — | 0 | 100% | — |
+
+### before (fw 0.2.0 tap rules) · 2026-10-29 · fw 0.2.0 · gesture=rule
+
+`voice=model,gesture=rule,fw=0.2.0` · 20 tries each · 8 s timeout
+
+| Gesture → stop | Correct | Wrong stop | Missed | Hit rate | Median time |
+|---|---|---|---|---|---|
+| Tap once → REM | 16/20 | DTN/gesture, DTN/gesture | 2 | 80% | 1998 ms |
+| Tap twice → DTN | 0/20 | KIM/gesture, KIM/gesture, KIM/gesture | 17 | 0% | — |
+| Tap 3 times → NYA | 0/20 | KIM/gesture, KIM/gesture, KIM/gesture, KIM/gesture, KIM/gesture, KIM/gesture, KIM/gesture, KIM/gesture, KIM/gesture, KIM/gesture, KIM/gesture, KIM/gesture, KIM/gesture, KIM/gesture, KIM/gesture, KIM/gesture | 4 | 0% | — |
+| Hold your hand still → KIM | 15/20 | — | 5 | 75% | 2589 ms |
+| Do nothing → (none) | 20/20 | — | 0 | 100% | — |
 
