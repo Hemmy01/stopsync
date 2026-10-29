@@ -645,6 +645,10 @@ export type Database = {
         Args: { p_bus?: string; p_role: string; p_user: string }
         Returns: Json
       }
+      simulate_bus_position: {
+        Args: { p_bus: string; p_lat: number; p_lng: number }
+        Returns: Json
+      }
       update_bus_location:
         | {
             Args: { p_bus: string; p_lat: number; p_lng: number }
