@@ -228,6 +228,16 @@ keywords never change ("Vuga “Remera”").
 > public, have a Kinyarwanda speaker read every `rw` string in `kiosk-text.ts`; fixes are one-line
 > edits there. A test fails if any string is empty or left in English.
 
+### Spoken announcements
+
+The kiosk reads out each new ticket ("Your number is R 2, 0 0 4, to Remera.") and each new boarding
+call ("Bus R 2, 0 1 to Remera is now boarding tickets …"), with the browser's built-in voice
+(`speechSynthesis`, no extra software). Codes are spelled digit by digit. The speaker icon in the top bar mutes it
+(remembered in that browser). Announcements are **held while the board is listening**, so the kiosk
+never says a stop name into the board's microphone. They are always in English, since browsers rarely ship a
+Kinyarwanda voice. Chrome only starts speaking after someone has clicked on the page once, which a
+card tap does.
+
 ### SQL scenario tests
 
 ```zsh
