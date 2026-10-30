@@ -209,6 +209,13 @@ reason and time, the people behind move up, and the kiosk sends `CANCEL` to the 
 ticket can't be cancelled. The dashboard shows **Why people left (today)** and the cancellation
 rate (cancelled today ÷ tickets issued or cancelled today).
 
+**Simulate drive (presentation aid).** On the dashboard, a released bus has **Simulate drive**: it
+moves along its real route from the terminal to the kiosk in about a minute (one step every 1.5 s),
+through `simulate_bus_position` (dispatcher or admin, only for a bus on the way), which runs the same
+`update_bus_location` logic as a phone. Departure, boarding at stops along the route, the kiosk's
+route strip, ETA and arrival all happen as with real GPS (events are logged as GPS). It runs in that
+dashboard tab: closing the tab or **Stop simulated drive** leaves the bus where it is.
+
 ### SQL scenario tests
 
 ```zsh

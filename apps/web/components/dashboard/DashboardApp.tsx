@@ -31,6 +31,7 @@ import { useAccount } from "@/lib/use-account";
 import { useDashboardData } from "@/lib/use-dashboard-data";
 import { useNow } from "@/lib/use-now";
 import { useRoutes } from "@/lib/use-routes";
+import { useSimulatedDrives } from "@/lib/use-simulated-drives";
 import { ActivityFeed } from "./ActivityFeed";
 import { DashboardHeader } from "./DashboardHeader";
 import { DestinationCard, type CardActions } from "./DestinationCard";
@@ -52,6 +53,7 @@ export function DashboardApp() {
   const { run, isPending, errors } = useActions();
   const now = useNow();
   const { routes, error: routesError } = useRoutes();
+  const drives = useSimulatedDrives();
   const stopNames = useMemo(() => new Map(routes.flatMap((r) => r.stops.map((st) => [st.id, st.name]))), [routes]);
   // Until routes load, count every stop (as before Phase 5).
   const servedStopsOf = (code: string) => {
@@ -70,6 +72,15 @@ export function DashboardApp() {
     reset: (b) => act(`reset-${b.id}`, () => resetBus(getSupabase(), b.id)),
     isPending,
     errorFor: (keys) => keys.map((k) => errors[k]).find(Boolean),
+    drive: {
+      progress: (busId) => drives.progress[busId],
+      start: (b) => {
+        const route = routes.find((r) => r.route === DESTINATIONS.find((d) => d.code === b.destination)?.route);
+        if (route) drives.start(b.id, route.stops);
+      },
+      stop: drives.stop,
+      error: (busId) => drives.errors[busId],
+    },
   };
 
   const derived = useMemo(() => {
