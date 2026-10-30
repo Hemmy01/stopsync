@@ -19,7 +19,7 @@ import {
   UPGRADES,
 } from "@/components/pitch/content";
 import { RouteBadge } from "@/components/RouteBadge";
-import { Wordmark } from "@/components/Wordmark";
+import { HomeLink } from "@/components/HomeLink";
 import { DESTINATIONS, NON_SELECTING_VOICE_LABELS } from "@/lib/destinations";
 import { formatAccuracy, headlineAccuracy, MODEL_STATUS_LABEL, MODELS } from "@/lib/models";
 
@@ -49,6 +49,7 @@ const REAL = [
     "Seats and occupancy",
     "Counted from tickets: boarding adds, riders get off at the terminal, the driver corrects with − / +. Future: Tap&Go validator taps or door counters for exact counts",
   ],
+  ["Sign-in and roles", "Real: Supabase Auth; kiosk, driver, dispatcher, viewer and admin rights enforced in the database"],
   ["Card tap (RFID)", "Simulated: demo cards on screen"],
   ["Other stops", "Simulator script"],
 ] as const;
@@ -162,9 +163,7 @@ export default function AboutPage() {
   return (
     <main className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-8 sm:py-12 print:max-w-none print:p-0">
       <header className="flex items-center justify-between gap-4 border-b border-line pb-6">
-        <Link href="/" aria-label="Tap&Select home">
-          <Wordmark />
-        </Link>
+        <HomeLink />
         <div className="flex items-center gap-3 print:hidden">
           <Link
             href="/pitch"

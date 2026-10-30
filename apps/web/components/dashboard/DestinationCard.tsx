@@ -26,7 +26,8 @@ interface DestinationCardProps {
   summary: DestinationSummary;
   buses: Bus[];
   pending: Decision | undefined;
-  actions: CardActions;
+  /** null for read-only accounts (viewer): the card shows no buttons. */
+  actions: CardActions | null;
 }
 
 const BUS_STATUS: Record<string, string> = {
@@ -76,7 +77,7 @@ function LoadBar({
   );
 }
 
-function BusRow({ bus, actions }: { bus: Bus; actions: CardActions }) {
+function BusRow({ bus, actions }: { bus: Bus; actions: CardActions | null }) {
   const arriveKey = `arrive-${bus.id}`;
   const resetKey = `reset-${bus.id}`;
   return (
@@ -91,12 +92,12 @@ function BusRow({ bus, actions }: { bus: Bus; actions: CardActions }) {
         </p>
         <OccupancyBar bus={bus} compact className="mt-1" />
       </div>
-      {bus.status === "on_the_way" ? (
+      {actions && bus.status === "on_the_way" ? (
         <Button size="md" onClick={() => actions.arrive(bus)} pending={actions.isPending(arriveKey)}>
           Bus arrived
         </Button>
       ) : null}
-      {bus.status === "arrived" ? (
+      {actions && bus.status === "arrived" ? (
         <Button size="md" onClick={() => actions.reset(bus)} pending={actions.isPending(resetKey)}>
           Reset bus
         </Button>
@@ -105,7 +106,7 @@ function BusRow({ bus, actions }: { bus: Bus; actions: CardActions }) {
   );
 }
 
-function Recommendation({ decision, actions }: { decision: Decision | undefined; actions: CardActions }) {
+function Recommendation({ decision, actions }: { decision: Decision | undefined; actions: CardActions | null }) {
   if (!decision) {
     return <p className="text-sm text-muted">No recommendation yet. Dispatch runs every minute.</p>;
   }
@@ -123,27 +124,31 @@ function Recommendation({ decision, actions }: { decision: Decision | undefined;
     <div className="rounded-card border border-accent bg-paper p-3">
       <p className="font-semibold text-accent">Release a bus</p>
       <p className="text-sm">{decision.reason}</p>
-      <div className="mt-3 flex gap-2">
-        <Button
-          variant="primary"
-          icon={<Check aria-hidden className="h-4 w-4" />}
-          onClick={() => actions.approve(decision)}
-          pending={actions.isPending(approveKey)}
-          disabled={actions.isPending(dismissKey)}
-          pendingLabel="Approving…"
-          className="flex-1"
-        >
-          Approve
-        </Button>
-        <Button
-          icon={<X aria-hidden className="h-4 w-4" />}
-          onClick={() => actions.dismiss(decision)}
-          pending={actions.isPending(dismissKey)}
-          disabled={actions.isPending(approveKey)}
-        >
-          Dismiss
-        </Button>
-      </div>
+      {actions ? (
+        <div className="mt-3 flex gap-2">
+          <Button
+            variant="primary"
+            icon={<Check aria-hidden className="h-4 w-4" />}
+            onClick={() => actions.approve(decision)}
+            pending={actions.isPending(approveKey)}
+            disabled={actions.isPending(dismissKey)}
+            pendingLabel="Approving…"
+            className="flex-1"
+          >
+            Approve
+          </Button>
+          <Button
+            icon={<X aria-hidden className="h-4 w-4" />}
+            onClick={() => actions.dismiss(decision)}
+            pending={actions.isPending(dismissKey)}
+            disabled={actions.isPending(approveKey)}
+          >
+            Dismiss
+          </Button>
+        </div>
+      ) : (
+        <p className="mt-2 text-sm text-muted">Waiting for a dispatcher to approve.</p>
+      )}
     </div>
   );
 }
@@ -159,7 +164,7 @@ export function DestinationCard({
   pending,
   actions,
 }: DestinationCardProps) {
-  const error = actions.errorFor([
+  const error = actions?.errorFor([
     ...(pending ? [`approve-${pending.id}`, `dismiss-${pending.id}`] : []),
     ...buses.flatMap((b) => [`arrive-${b.id}`, `reset-${b.id}`]),
   ]);

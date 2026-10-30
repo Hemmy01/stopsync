@@ -103,7 +103,9 @@ Arduino board (Edge Impulse models) ──USB serial──▶ Kiosk page (Chrome
 - Data collection: **edge-impulse-cli** (`edge-impulse-data-forwarder`)
 
 Do not add other dependencies without telling me why first.
-No authentication in this prototype.
+Authentication: Supabase Auth (email + password) with roles in `profiles`
+(admin, dispatcher, driver, kiosk, viewer), enforced in the database (Phase 7, see README
+"Accounts and roles"). Never use the service-role key in the web app.
 
 ---
 
@@ -320,9 +322,9 @@ Seed 2 buses per destination (`R1-01`, `R1-02`, … `R4-02`), all `at_terminal`.
 
 ### Platform setup (in migrations)
 
-- Enable RLS on every table with a permissive prototype policy for `anon` and
-  `authenticated` (`using (true) with check (true)`). Note clearly in the README that this
-  is prototype-only and production needs real auth.
+- Enable RLS on every table. Since Phase 7 (`20261030090000_user_roles.sql`) the open
+  prototype policies are replaced by role-based ones: signed-in roles read, admin writes,
+  everything else goes through role-checked functions; signed out (`anon`) gets nothing.
 - Add `queue_tokens`, `buses`, `dispatch_decisions`, `bus_events`, `config` to the
   `supabase_realtime` publication.
 - Schedule `run_dispatch()` every minute with `pg_cron`

@@ -8,7 +8,9 @@
 // Tickets go through the same create_token() function as the kiosk. They are
 // stored with method "rfid" (card only), so they count as demand on the
 // dashboard and in dispatch but never in the voice/gesture model statistics.
-// Uses only the public anon key from apps/web/.env.local (or the environment).
+// Signs in as the kiosk account (SIM_EMAIL, default kiosk@tapselect.demo, with SIM_PASSWORD
+// or DEMO_PASSWORD) using the public anon key, so it has a kiosk's rights and nothing more.
+// Settings come from apps/web/.env.local, the root .env.local or the environment.
 
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -40,14 +42,40 @@ function loadEnv() {
   if (!url || !key) {
     throw new Error("Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY (apps/web/.env.local).");
   }
-  return { url: url.replace(/\/$/, ""), key };
+  const email = process.env.SIM_EMAIL ?? "kiosk@tapselect.demo";
+  const password = process.env.SIM_PASSWORD ?? process.env.DEMO_PASSWORD;
+  if (!password) {
+    throw new Error(`Set SIM_PASSWORD (or DEMO_PASSWORD) to the password of the kiosk account ${email}.`);
+  }
+  return { url: url.replace(/\/$/, ""), key, email, password };
 }
 
-function api({ url, key }) {
-  const headers = { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" };
-  const request = async (path, init = {}) => {
+async function signIn({ url, key, email, password }) {
+  const res = await fetch(`${url}/auth/v1/token?grant_type=password`, {
+    method: "POST",
+    headers: { apikey: key, "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok || !body.access_token) {
+    throw new Error(`Can't sign in as ${email}: ${body.error_description ?? body.msg ?? res.status}`);
+  }
+  return body.access_token;
+}
+
+function api(env) {
+  const { url, key } = env;
+  let token = null;
+  const request = async (path, init = {}, retry = true) => {
+    token ??= await signIn(env);
+    const headers = { apikey: key, Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
     const res = await fetch(`${url}/rest/v1/${path}`, { ...init, headers: { ...headers, ...init.headers } });
     const text = await res.text();
+    // Sessions last an hour: sign in again once when the token has expired.
+    if (res.status === 401 && retry) {
+      token = null;
+      return request(path, init, false);
+    }
     if (!res.ok) throw new Error(`${res.status} ${text.slice(0, 200)}`);
     return text ? JSON.parse(text) : null;
   };
@@ -60,11 +88,7 @@ function api({ url, key }) {
         body: JSON.stringify({ p_stop: stop, p_dest: dest, p_card: card, p_method: "rfid" }),
       }),
     expireWaiting: (ids) =>
-      request(`queue_tokens?stop_id=in.(${ids.join(",")})&status=eq.waiting&select=id`, {
-        method: "PATCH",
-        headers: { Prefer: "return=representation" },
-        body: JSON.stringify({ status: "expired" }),
-      }),
+      request("rpc/expire_waiting_tokens", { method: "POST", body: JSON.stringify({ p_stops: ids }) }),
   };
 }
 
@@ -145,7 +169,7 @@ async function run(db, opts) {
 
 async function clear(db) {
   const expired = await db.expireWaiting(SIM_STOPS);
-  console.log(`Expired ${expired.length} waiting simulator tickets (stops ${SIM_STOPS[0]}…${SIM_STOPS.at(-1)}).`);
+  console.log(`Expired ${expired} waiting simulator tickets (stops ${SIM_STOPS[0]}…${SIM_STOPS.at(-1)}).`);
 }
 
 try {

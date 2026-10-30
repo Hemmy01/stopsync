@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { RequireRole } from "@/components/auth/RequireRole";
 import { DashboardApp } from "@/components/dashboard/DashboardApp";
 
 export const metadata: Metadata = {
@@ -6,5 +7,9 @@ export const metadata: Metadata = {
 };
 
 export default function DashboardPage() {
-  return <DashboardApp />;
+  return (
+    <RequireRole page="/dashboard">
+      <DashboardApp />
+    </RequireRole>
+  );
 }

@@ -4,7 +4,7 @@ import { RotateCcw } from "lucide-react";
 import Link from "next/link";
 import { useEffect } from "react";
 import { Button } from "@/components/Button";
-import { Wordmark } from "@/components/Wordmark";
+import { HomeLink } from "@/components/HomeLink";
 
 export default function Error({ error, retry }: { error: unknown; retry: () => void }) {
   useEffect(() => {
@@ -13,7 +13,7 @@ export default function Error({ error, retry }: { error: unknown; retry: () => v
 
   return (
     <main className="mx-auto flex w-full max-w-xl flex-1 flex-col justify-center px-4 py-16">
-      <Wordmark />
+      <HomeLink />
       <h1 className="mt-10 text-[40px] leading-tight">Something went wrong on this screen.</h1>
       <p className="mt-3 text-lg text-muted">
         The rest of Tap&Select keeps running. Try again, or go back to the start.

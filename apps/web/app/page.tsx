@@ -16,9 +16,14 @@ export default function HomePage() {
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 py-8 sm:px-8 sm:py-12">
       <header className="flex items-center justify-between border-b border-line pb-6">
         <Wordmark />
-        <div className="text-right">
-          <KigaliClock className="block text-2xl font-medium" />
-          <span className="text-sm text-muted">Kigali</span>
+        <div className="flex items-center gap-6">
+          <Link href="/login" className="font-semibold underline underline-offset-4">
+            Sign in
+          </Link>
+          <div className="text-right">
+            <KigaliClock className="block text-2xl font-medium" />
+            <span className="text-sm text-muted">Kigali</span>
+          </div>
         </div>
       </header>
 

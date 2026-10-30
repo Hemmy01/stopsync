@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { RequireRole } from "@/components/auth/RequireRole";
 import { KioskApp } from "@/components/kiosk/KioskApp";
 
 export const metadata: Metadata = {
@@ -6,5 +7,9 @@ export const metadata: Metadata = {
 };
 
 export default function KioskPage() {
-  return <KioskApp />;
+  return (
+    <RequireRole page="/kiosk">
+      <KioskApp />
+    </RequireRole>
+  );
 }

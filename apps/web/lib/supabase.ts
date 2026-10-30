@@ -16,13 +16,17 @@ export const SUPABASE_CONFIG_ERROR =
 
 let client: StopSyncClient | null = null;
 
-/** Browser Supabase client (anon key only, no sessions: there is no auth). */
+/**
+ * Browser Supabase client. The anon key only identifies the project; what a user may read
+ * or do comes from their signed-in session (kept in localStorage and refreshed, so a kiosk
+ * signs in once) and their role in public.profiles.
+ */
 export function getSupabase(): StopSyncClient {
   if (client) return client;
   if (!url || !anonKey) throw new Error(SUPABASE_CONFIG_ERROR ?? "Supabase is not configured.");
 
   client = createClient<Database>(url, anonKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
+    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false },
   });
   return client;
 }

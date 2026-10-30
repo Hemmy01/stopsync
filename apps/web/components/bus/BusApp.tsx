@@ -1,13 +1,13 @@
 "use client";
 
 import { ArrowLeft } from "lucide-react";
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Banner } from "@/components/Banner";
 import { KigaliClock } from "@/components/KigaliClock";
-import { Wordmark } from "@/components/Wordmark";
+import { HomeLink } from "@/components/HomeLink";
 import { autoTrackingAction, unblockLocationSteps } from "@/lib/auto-tracking";
 import { adjustOccupancy, completeTrip, markBusArrived } from "@/lib/rpc";
+import { useAccount } from "@/lib/use-account";
 import { getSupabase, STOP_ID, type StopSyncClient } from "@/lib/supabase";
 import { useActions } from "@/lib/use-actions";
 import { useBusTracker } from "@/lib/use-bus-tracker";
@@ -16,6 +16,7 @@ import { unwrap, useRealtimeData, type RealtimeTable } from "@/lib/use-realtime-
 import { useStopName } from "@/lib/use-stop";
 import { useWakeLock } from "@/lib/use-wake-lock";
 import { BusConsole } from "./BusConsole";
+import { AccountBadge } from "@/components/auth/AccountBadge";
 import { BusPicker } from "./BusPicker";
 
 const TABLES: readonly RealtimeTable[] = ["buses"];
@@ -43,8 +44,12 @@ function saveBus(busId: string | null) {
 }
 
 export function BusApp() {
+  const account = useAccount();
+  // A driver only ever sees their own bus; admins pick any.
+  const ownBus = account.role === "driver" ? account.busId : null;
   const { data: buses, loading, error } = useRealtimeData(TABLES, loadBuses);
-  const [busId, setBusId] = useState<string | null>(null);
+  const [pickedId, setBusId] = useState<string | null>(null);
+  const busId = ownBus ?? pickedId;
   const tracker = useBusTracker(busId);
   const { run, isPending, errors } = useActions();
   const [arrivalMessage, setArrivalMessage] = useState<string | null>(null);
@@ -110,10 +115,11 @@ export function BusApp() {
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col px-4 pb-10">
       <header className="flex h-16 items-center justify-between border-b border-line">
-        <Link href="/" aria-label="Tap&Select home">
-          <Wordmark />
-        </Link>
-        <KigaliClock className="text-xl font-medium" />
+        <HomeLink />
+        <div className="flex items-center gap-4">
+          <KigaliClock className="text-xl font-medium" />
+          <AccountBadge compact />
+        </div>
       </header>
 
       <main className="flex-1 pt-6">
@@ -125,18 +131,26 @@ export function BusApp() {
 
         {loading && !buses ? <p className="text-muted">Loading buses…</p> : null}
 
-        {buses && !bus ? <BusPicker buses={buses} onPick={pick} /> : null}
+        {buses && !bus && !ownBus && account.role !== "driver" ? <BusPicker buses={buses} onPick={pick} /> : null}
+
+        {account.role === "driver" && !ownBus ? (
+          <Banner tone="warn" title="No bus assigned" className="mb-4">
+            Ask an admin to link your account to a bus.
+          </Banner>
+        ) : null}
 
         {bus ? (
           <>
-            <button
-              type="button"
-              onClick={() => pick(null)}
-              className="mb-4 inline-flex h-11 items-center gap-2 font-semibold text-muted hover:text-ink"
-            >
-              <ArrowLeft aria-hidden className="h-4 w-4" />
-              Change bus
-            </button>
+            {ownBus ? null : (
+              <button
+                type="button"
+                onClick={() => pick(null)}
+                className="mb-4 inline-flex h-11 items-center gap-2 font-semibold text-muted hover:text-ink"
+              >
+                <ArrowLeft aria-hidden className="h-4 w-4" />
+                Change bus
+              </button>
+            )}
             <BusConsole
               bus={bus}
               tracking={{
