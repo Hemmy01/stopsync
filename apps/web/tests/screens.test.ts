@@ -10,9 +10,9 @@ describe("screens per role", () => {
   });
 
   it("each role sees its own screen plus the public ones", () => {
-    expect(labelsFor("driver")).toEqual(["Bus", "Live board", "About"]);
-    expect(labelsFor("kiosk")).toEqual(["Kiosk", "Live board", "About"]);
-    expect(labelsFor("viewer")).toEqual(["Dashboard", "Live board", "About"]);
-    expect(labelsFor(null)).toEqual(["Live board", "About"]);
+    expect(labelsFor("driver")).toEqual(["Bus", "About"]);
+    expect(labelsFor("kiosk")).toEqual(["Kiosk", "About"]);
+    expect(labelsFor("viewer")).toEqual(["Dashboard", "About"]);
+    expect(labelsFor(null)).toEqual(["About"]);
   });
 });

@@ -3,7 +3,7 @@
 import { canOpen, type ProtectedPage, type Role } from "./auth";
 
 export interface Screen {
-  href: "/kiosk" | "/dashboard" | "/bus" | "/live" | "/admin/users" | "/about";
+  href: "/kiosk" | "/dashboard" | "/bus" | "/admin/users" | "/about";
   label: string;
   detail: string;
   /** Opens for anyone, signed in or not. */
@@ -12,11 +12,11 @@ export interface Screen {
   menuOnly?: boolean;
 }
 
+// The public live board (/live) is not listed: the audience reaches it from the QR code on the pitch.
 export const SCREENS: readonly Screen[] = [
   { href: "/kiosk", label: "Kiosk", detail: "Passenger screen at the stop" },
   { href: "/dashboard", label: "Dashboard", detail: "HQ demand and dispatch" },
   { href: "/bus", label: "Bus", detail: "Driver phone, shares GPS" },
-  { href: "/live", label: "Live board", detail: "Follow along on your phone, no sign-in", public: true },
   { href: "/admin/users", label: "Users", detail: "Accounts and roles", menuOnly: true },
   { href: "/about", label: "About", detail: "How it works", public: true, menuOnly: true },
 ];
