@@ -11,7 +11,7 @@ import { DESTINATIONS } from "@/lib/destinations";
 import { formatAccuracy, MODELS } from "@/lib/models";
 import { PITCH_SECTIONS, type PitchSection } from "@/lib/pitch-nav";
 import {
-  BENEFITS,
+  BENEFITS_SHORT,
   BurgerParagraph,
   Cite,
   CLOSING_LINE,
@@ -25,7 +25,6 @@ import {
   SENSE_DECIDE_INFORM,
   TAGLINE,
   TEAM,
-  STRONGEST_FEATURES,
   WHAT_RUNS_WHERE,
 } from "./content";
 
@@ -93,15 +92,15 @@ const voice = MODELS.voice;
 const validation = voice.validationAccuracy;
 
 export const SLIDES: readonly Slide[] = [
-  // 1 ---------------------------------------------------------------------
+  // 1 --------------------------------------------------------------------
   {
     title: "Tap&Select",
     section: null,
     speaker: "Samira",
     notes: [
-      "Samira: slides 1–3 (hook and problem). Kevin: 4 (justification). Kenny: 5–6 (solution, benefits).",
-      "Emmanuel: 7–12 (tech, features, ML, real vs simulated, the whole idea, live demo). Hassan: 13–16 (roadmap, conclusion, references, questions).",
-      "About 7 minutes plus the demo.",
+      "Samira: 1–2 (hook, problem). Kevin: 3 (justification). Kenny: 4 (solution and benefits).",
+      "Emmanuel: 5–9 (how it works, what's real, recognition, the whole idea, live demo). Hassan: 10–13 (roadmap, conclusion, references, questions).",
+      "About 5 minutes of slides plus a 3-minute demo. Each speaker: one idea per slide, no reading.",
     ],
     body: (
       <div className="flex h-full flex-col justify-between px-16 py-14">
@@ -117,68 +116,42 @@ export const SLIDES: readonly Slide[] = [
       </div>
     ),
   },
-  // 2 ---------------------------------------------------------------------
+  // 2 --------------------------------------------------------------------
   {
-    title: "Hook",
+    title: "The problem",
     section: "Problem",
     speaker: "Samira",
     notes: [
-      "Ask the question, then pause.",
-      "Ask the room to raise a hand if they waited over 20 minutes.",
-      "Tell the commuter's story: leaves work at 6 PM, home after 9 PM.",
-      "Land the fact: the regulator itself says waits can reach one hour.",
+      "Ask the question, pause, and ask for a show of hands: who waited more than 20 minutes?",
+      "Story: a Kigali commuter leaves work at 6 PM and gets home after 9 PM [1].",
+      "Three numbers: waits up to an hour, half the buses the city needs, near-empty buses off-peak.",
+      "Land the gap: nobody measures who is waiting.",
     ],
     body: (
-      <Frame section="Problem" title="The problem">
-        <p className="text-[64px] font-bold leading-[1.08] font-display">How long did you wait for a bus this week?</p>
-        <div className="mt-12 grid grid-cols-2 gap-6">
-          <Card heading="A story">
-            A Kigali commuter leaves work at 6 PM and reaches home after 9 PM.
-            <Cite n={1} />
-          </Card>
-          <Card heading="A surprising fact">
-            Rwanda&rsquo;s transport regulator has said the average wait can reach one hour.
-            <Cite n={1} />
-          </Card>
-        </div>
-      </Frame>
-    ),
-  },
-  // 3 ---------------------------------------------------------------------
-  {
-    title: "The invisible queue",
-    section: "Problem",
-    speaker: "Samira",
-    notes: [
-      "Read the topic line slowly: both sides are waiting, and neither can see the other.",
-      "Three cards: empty off-peak buses, hours-long peaks, and too few buses overall.",
-      "Close on the footer: nobody measures who is waiting. That's the gap we fill.",
-    ],
-    body: (
-      <Frame section="Problem" title="The invisible queue">
+      <Frame section="Problem" title="How long did you wait for a bus this week?">
         <p className="max-w-[1080px] text-[30px] leading-snug">
           Buses wait for passengers while passengers wait for buses, because neither side can see the other.
         </p>
         <div className="mt-8 grid grid-cols-3 gap-5">
           <Card>
-            <span className="num block text-[56px] font-bold leading-none">10&ndash;15</span>
+            <span className="num block text-[56px] font-bold leading-none">1 hour</span>
             <span className="mt-3 block">
-              Off-peak scheduled buses left with only 10&ndash;15 passengers.
-              <Cite n={2} />
-            </span>
-          </Card>
-          <Card>
-            <span className="block text-[56px] font-bold leading-none font-display">Hours</span>
-            <span className="mt-3 block">
-              At peak and holiday times, travellers waited several hours.
-              <Cite n={4} />
+              Average wait can reach an hour, says the regulator.
+              <Cite n={1} />
             </span>
           </Card>
           <Card>
             <span className="num block text-[56px] font-bold leading-none">229 / 500</span>
             <span className="mt-3 block">
-              Kigali needed about 500 buses but had 229 in 2022.
+              Buses Kigali had in 2022, against about 500 needed.
               <Cite n={1} />
+            </span>
+          </Card>
+          <Card>
+            <span className="num block text-[56px] font-bold leading-none">10&ndash;15</span>
+            <span className="mt-3 block">
+              Passengers on some off-peak scheduled buses.
+              <Cite n={2} />
             </span>
           </Card>
         </div>
@@ -188,7 +161,7 @@ export const SLIDES: readonly Slide[] = [
       </Frame>
     ),
   },
-  // 4 ---------------------------------------------------------------------
+  // 3 --------------------------------------------------------------------
   {
     title: "Justification",
     section: "Problem",
@@ -204,57 +177,43 @@ export const SLIDES: readonly Slide[] = [
       </Frame>
     ),
   },
-  // 5 ---------------------------------------------------------------------
+  // 4 --------------------------------------------------------------------
   {
     title: "The solution",
     section: "Solution",
     speaker: "Kenny",
     notes: [
-      "Read the vision line, then walk the three columns left to right.",
-      "Sense is the kiosk; Decide is HQ with a human approving; Inform is the passenger's ticket and ETA.",
+      "Read the vision line, then the three steps left to right: Sense is the kiosk, Decide is HQ with a person approving, Inform is the ticket and ETA.",
+      "Then who gains, one line each. Operator gains are our aim; a pilot would measure them.",
       "We complement Generation 2: schedules plus real demand.",
     ],
     body: (
       <Frame section="Solution" title="Every bus stop becomes a sensor. Every bus leaves for a reason.">
         <ol className="grid grid-cols-3 gap-5">
           {SENSE_DECIDE_INFORM.map((s, i) => (
-            <li key={s.step} className="rounded-card border border-line bg-surface p-6">
+            <li key={s.step} className="rounded-card border border-line bg-surface p-5">
               <span className="num text-[20px] text-muted">{String(i + 1).padStart(2, "0")}</span>
-              <h3 className="mt-1 text-[36px]">{s.step}</h3>
-              <p className="mt-3 text-[24px] leading-snug">{s.detail}</p>
+              <h3 className="mt-1 text-[34px]">{s.step}</h3>
+              <p className="mt-2 text-[23px] leading-snug">{s.detail}</p>
             </li>
           ))}
         </ol>
-        <p className="mt-8 text-[26px]">
+        <dl className="mt-6 grid grid-cols-3 divide-x divide-line rounded-card border border-line bg-surface">
+          {BENEFITS_SHORT.map((b) => (
+            <div key={b.who} className="px-5 py-4">
+              <dt className="text-[17px] font-semibold uppercase tracking-[0.1em] text-muted">{b.who}</dt>
+              <dd className="mt-1 text-[21px] leading-snug">{b.text}</dd>
+            </div>
+          ))}
+        </dl>
+        <p className="mt-6 text-[24px]">
           Tap&amp;Select works with Generation 2: schedules plus real demand.
           <Cite n={3} />
         </p>
       </Frame>
     ),
   },
-  // 6 ---------------------------------------------------------------------
-  {
-    title: "Benefits",
-    section: "Solution",
-    speaker: "Kenny",
-    notes: [
-      "Passengers: fairness and certainty, no smartphone needed. Choosing the stop is hands-free; confirming is one big button on screen.",
-      "Operators: the aim is fuller buses and less fuel wasted on empty trips. We haven't measured that yet; a pilot would.",
-      "City and RURA: data to reach the 50% public-transport goal.",
-    ],
-    body: (
-      <Frame section="Solution" title="Benefits to the customer">
-        <div className="grid grid-cols-3 gap-5">
-          {BENEFITS.map((b) => (
-            <Card key={b.who} heading={b.who} className="h-full">
-              {b.text}
-            </Card>
-          ))}
-        </div>
-      </Frame>
-    ),
-  },
-  // 7 ---------------------------------------------------------------------
+  // 5 --------------------------------------------------------------------
   {
     title: "How it works",
     section: "Tech",
@@ -279,116 +238,24 @@ export const SLIDES: readonly Slide[] = [
       </Frame>
     ),
   },
-  // 8 ---------------------------------------------------------------------
+  // 6 --------------------------------------------------------------------
   {
-    title: "Strongest features first",
+    title: "What works today",
     section: "Tech",
     speaker: "Emmanuel",
     notes: [
-      "Ranked by how complete and how valuable each feature is. The top three work end to end today.",
-      "Each row says honestly whether it is real, rule-based or estimated.",
-      "Swipes are not machine learning: the sensor detects direction itself. We measured 85–95% per direction, 20 tries each, one tester.",
-      "Hands-free means choosing the stop. Confirm and cancel are on-screen buttons; say so if asked.",
-      "The voice model runs on the board, but its accuracy is not measured yet. Say that plainly.",
-    ],
-    body: (
-      <Frame section="Tech" title="What it does, strongest first">
-        <table className="w-full text-left">
-          <thead>
-            <tr className="border-b-2 border-ink text-[15px] uppercase tracking-[0.1em] text-muted">
-              <th className="w-8 pb-1.5 font-semibold" aria-label="Rank" />
-              <th className="pb-1.5 font-semibold">Feature and how it works</th>
-              <th className="pb-1.5 font-semibold">Benefit</th>
-              <th className="pb-1.5 text-right font-semibold">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {STRONGEST_FEATURES.map((f, i) => (
-              <tr key={f.feature} className="border-b border-line align-top">
-                <td className="num py-1.5 text-[18px] text-muted">{i + 1}</td>
-                <td className="py-1.5 pr-4">
-                  <span className="block text-[19px] font-semibold leading-tight">{f.feature}</span>
-                  <span className="block text-[14px] leading-snug text-muted">{f.how}</span>
-                </td>
-                <td className="py-1.5 pr-3 text-[17px] leading-snug">{f.benefit}</td>
-                <td className="py-1.5 text-right">
-                  <RealityBadge reality={f.reality} className="text-[14px]" />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </Frame>
-    ),
-  },
-  // 9 ---------------------------------------------------------------------
-  {
-    title: "Our machine learning",
-    section: "Tech",
-    speaker: "Emmanuel",
-    notes: [
-      "Keyword spotting in Edge Impulse: four stop names plus noise and unknown, so silence and chatter never select.",
-      "About 30 minutes of our own voices, mostly recorded on the board's microphone.",
-      "It runs on the microcontroller: int8 + EON, ~20 KB RAM, ~0.4 s per window.",
-      "Be honest about the limit: unseen voices are harder; more voices and accents next.",
-    ],
-    body: (
-      <Frame section="Tech" title="Our machine learning">
-        <div className="grid grid-cols-[1.25fr_1fr] gap-6">
-          <div className="space-y-3">
-            <Card className="!p-5" heading="Edge Impulse keyword spotting, 6 classes">
-              <span className="mt-1 flex flex-wrap gap-2">
-                {DESTINATIONS.map((d) => (
-                  <span key={d.code} className="flex items-center gap-2 rounded-pill border border-line px-3 py-0.5 text-[20px]">
-                    <RouteBadge code={d.code} size="sm" />
-                    {d.name}
-                  </span>
-                ))}
-                <span className="rounded-pill border border-line px-3 py-0.5 text-[20px]">noise</span>
-                <span className="rounded-pill border border-line px-3 py-0.5 text-[20px]">unknown</span>
-              </span>
-            </Card>
-            <Card className="!p-5" heading="Dataset">
-              About 30 minutes of audio from 4 team voices, recorded mainly on the board&rsquo;s own microphone, split
-              into about 1,100 one-second samples.
-            </Card>
-          </div>
-          <div className="space-y-3">
-            <Card className="!p-5">
-              <span className="text-[19px] font-semibold uppercase tracking-[0.1em] text-muted">Validation accuracy</span>
-              {validation === null ? (
-                <span className="mt-1 block text-[48px] font-bold leading-none font-display">Pending</span>
-              ) : (
-                <span className="num mt-1 block text-[64px] font-bold leading-none">{formatAccuracy(validation)}</span>
-              )}
-            </Card>
-            <Card className="!p-5" heading="On the board">
-              int8 + EON compiler · about 20 KB RAM and 31 KB flash · about 0.4 s per 1-second window. Fits easily on a
-              256 KB RAM board.
-            </Card>
-          </div>
-        </div>
-        <p className="mt-4 rounded-card border-2 border-ink px-5 py-2.5 text-[21px] leading-snug">
-          <span className="font-semibold">What we learned: </span>
-          Accuracy is lower on voices the model has never heard. Next: more voices and accents, recorded at real bus
-          stops.
-        </p>
-      </Frame>
-    ),
-  },
-  // 10 --------------------------------------------------------------------
-  {
-    title: "Real vs simulated",
-    section: "Tech",
-    speaker: "Emmanuel",
-    notes: [
-      "Be upfront: judges trust a team that says what is simulated.",
+      "Lead with the three strongest features: they work end to end today.",
+      "Then be upfront: judges trust a team that says what is simulated.",
       "Real: the board's voice model and swipes, the whole queue and dispatch system, phone GPS, roles.",
       "Estimated: ETA uses a fixed average speed; seats are counted from tickets; our thresholds are guesses until a pilot.",
       "Simulated: the card tap, other stops, and the indoor drive button. All data so far is from our tests.",
     ],
     body: (
-      <Frame section="Tech" title="What is real, estimated, simulated, not built">
+      <Frame section="Tech" title="What works today, and what doesn’t yet">
+        <p className="mb-5 text-[24px] leading-snug">
+          <span className="font-semibold">Strongest, working end to end: </span>
+          live demand → dispatch loop · fair first-come queue · live bus tracking
+        </p>
         <div className="grid grid-cols-4 gap-4">
           {REALITY.map((group) => (
             <section key={group.kind} className="rounded-card border border-line bg-surface p-4">
@@ -406,7 +273,58 @@ export const SLIDES: readonly Slide[] = [
       </Frame>
     ),
   },
-  // 11 --------------------------------------------------------------------
+  // 7 --------------------------------------------------------------------
+  {
+    title: "On-device recognition",
+    section: "Tech",
+    speaker: "Emmanuel",
+    notes: [
+      "Voice: Edge Impulse keyword spotting with four stop names plus noise and unknown, so chatter never selects.",
+      "It runs on the microcontroller itself, so no audio leaves the board.",
+      "Swipes are not ML: the sensor reads the direction. We measured them; the voice model is not measured yet. Say so.",
+      "Confirm the dataset size and the on-board figures from Edge Impulse before presenting.",
+    ],
+    body: (
+      <Frame section="Tech" title="On-device recognition">
+        <div className="grid grid-cols-2 gap-5">
+          <Card heading="Voice: Edge Impulse keyword model">
+            <span className="flex flex-wrap gap-2">
+              {DESTINATIONS.map((d) => (
+                <span key={d.code} className="flex items-center gap-2 rounded-pill border border-line px-3 py-0.5 text-[20px]">
+                  <RouteBadge code={d.code} size="sm" />
+                  {d.name}
+                </span>
+              ))}
+              <span className="rounded-pill border border-line px-3 py-0.5 text-[20px]">noise</span>
+              <span className="rounded-pill border border-line px-3 py-0.5 text-[20px]">unknown</span>
+            </span>
+            <span className="mt-3 block text-[21px] text-muted">
+              Runs on the Arduino: int8, about 20 KB RAM, about 0.4 s per window.
+            </span>
+            <span className="mt-2 block text-[21px]">
+              Accuracy:{" "}
+              {validation === null ? (
+                <span className="font-semibold">not measured yet</span>
+              ) : (
+                <span className="num font-semibold">{formatAccuracy(validation)}</span>
+              )}
+            </span>
+          </Card>
+          <Card heading="Swipes: read by the sensor, no ML">
+            <span className="num block text-[64px] font-bold leading-none">85&ndash;95%</span>
+            <span className="mt-2 block text-[21px] text-muted">
+              Correct per direction, 20 tries each, one tester. Doing nothing never selected a stop.
+            </span>
+          </Card>
+        </div>
+        <p className="mt-6 rounded-card border-2 border-ink px-5 py-3 text-[22px] leading-snug">
+          <span className="font-semibold">What we learned: </span>
+          voices the model has never heard are harder. Next: more voices and accents, recorded at real stops.
+        </p>
+      </Frame>
+    ),
+  },
+  // 8 --------------------------------------------------------------------
   {
     title: "The whole idea",
     section: "Tech",
@@ -422,7 +340,7 @@ export const SLIDES: readonly Slide[] = [
       </Frame>
     ),
   },
-  // 12 --------------------------------------------------------------------
+  // 9 --------------------------------------------------------------------
   {
     title: "Live demo",
     section: "Tech",
@@ -487,7 +405,7 @@ export const SLIDES: readonly Slide[] = [
       </Frame>
     ),
   },
-  // 13 --------------------------------------------------------------------
+  // 10 -------------------------------------------------------------------
   {
     title: "Roadmap",
     section: "Conclusion",
@@ -495,10 +413,10 @@ export const SLIDES: readonly Slide[] = [
     notes: [
       "Today is a working prototype at one kiosk.",
       "Next, a pilot at 2–3 stops on one route, then the city.",
-      "Improvements, most important first: measure and grow the voice model, a one-week pilot at a real stop, a real card reader, exact seat counts, traffic-aware ETA, a street-ready kiosk.",
+      "Top three improvements: measure and grow the voice model, a one-week pilot at a real stop, a real card reader. The full list is on /about.",
     ],
     body: (
-      <Frame section="Conclusion" title="Roadmap and what we must improve">
+      <Frame section="Conclusion" title="Roadmap">
         <ol className="relative grid grid-cols-3 gap-6">
           <span aria-hidden className="absolute top-[22px] right-[16%] left-[16%] h-0.5 bg-ink" />
           {ROADMAP_PHASES.map((p, i) => (
@@ -519,10 +437,10 @@ export const SLIDES: readonly Slide[] = [
           ))}
         </ol>
         <h3 className="mt-6 text-[17px] font-semibold uppercase tracking-[0.12em] text-muted">
-          Improvements we need, most important first
+          Top three improvements
         </h3>
         <ol className="mt-3 grid grid-cols-3 gap-3">
-          {IMPROVEMENTS.map((u, i) => (
+          {IMPROVEMENTS.slice(0, 3).map((u, i) => (
             <li key={u.what} className="rounded-card border border-line bg-surface px-4 py-2.5">
               <span className="block text-[20px] font-semibold leading-tight">
                 <span className="num mr-2 text-muted">{i + 1}</span>
@@ -535,7 +453,7 @@ export const SLIDES: readonly Slide[] = [
       </Frame>
     ),
   },
-  // 14 --------------------------------------------------------------------
+  // 11 -------------------------------------------------------------------
   {
     title: "Conclusion",
     section: "Conclusion",
@@ -558,7 +476,7 @@ export const SLIDES: readonly Slide[] = [
       </Frame>
     ),
   },
-  // 15 --------------------------------------------------------------------
+  // 12 -------------------------------------------------------------------
   {
     title: "References",
     section: "Conclusion",
@@ -576,7 +494,7 @@ export const SLIDES: readonly Slide[] = [
       </Frame>
     ),
   },
-  // 16 --------------------------------------------------------------------
+  // 13 -------------------------------------------------------------------
   {
     title: "Thank you",
     section: null,
