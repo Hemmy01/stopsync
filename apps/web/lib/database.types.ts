@@ -580,6 +580,7 @@ export type Database = {
         Args: { p_card: string; p_reason: string }
         Returns: Json
       }
+      choose_my_bus: { Args: { p_bus: string }; Returns: Json }
       complete_trip: {
         Args: { p_bus: string; p_source?: string }
         Returns: Json
@@ -649,6 +650,7 @@ export type Database = {
         Args: { p_bus: string; p_lat: number; p_lng: number }
         Returns: Json
       }
+      taken_buses: { Args: never; Returns: string[] }
       update_bus_location:
         | {
             Args: { p_bus: string; p_lat: number; p_lng: number }
