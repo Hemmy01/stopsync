@@ -9,6 +9,7 @@ const SCREENS = [
   { href: "/kiosk", label: "Kiosk", detail: "Passenger screen at the stop" },
   { href: "/dashboard", label: "Dashboard", detail: "HQ demand and dispatch" },
   { href: "/bus", label: "Bus", detail: "Driver phone, shares GPS" },
+  { href: "/live", label: "Live board", detail: "Follow along on your phone, no sign-in" },
 ] as const;
 
 export default function HomePage() {
