@@ -8,7 +8,9 @@ import {
   Cite,
   CLOSING_LINE,
   CONCLUSION,
-  FEATURES_TO_BENEFITS,
+  IMPROVEMENTS,
+  REALITY,
+  RealityBadge,
   FLOW_STEPS,
   REFERENCES,
   ReferenceLine,
@@ -16,7 +18,7 @@ import {
   SENSE_DECIDE_INFORM,
   TAGLINE,
   TEAM,
-  UPGRADES,
+  STRONGEST_FEATURES,
 } from "@/components/pitch/content";
 import { RouteBadge } from "@/components/RouteBadge";
 import { HomeLink } from "@/components/HomeLink";
@@ -39,20 +41,6 @@ function Section({ n, title, children }: { n: string; title: string; children: R
     </section>
   );
 }
-
-const REAL = [
-  ["Voice choice", "Real: Edge Impulse keyword model on the board"],
-  ["Swipe choice over the sensor", "Real: the APDS9960 sensor's built-in swipe direction engine on the board (no ML)"],
-  ["Kiosk, database, dispatch, dashboard", "Real"],
-  ["Bus location", "Real phone GPS (/bus page), starts by itself when HQ releases the bus. Future: a fixed GPS tracker (AVL) in each bus"],
-  [
-    "Seats and occupancy",
-    "Counted from tickets: boarding adds, riders get off at the terminal, the driver corrects with − / +. Future: Tap&Go validator taps or door counters for exact counts",
-  ],
-  ["Sign-in and roles", "Real: Supabase Auth; kiosk, driver, dispatcher, viewer and admin rights enforced in the database"],
-  ["Card tap (RFID)", "Simulated: demo cards on screen"],
-  ["Other stops", "Simulator script"],
-] as const;
 
 function VoiceModelCard() {
   const info = MODELS.voice;
@@ -240,18 +228,31 @@ export default function AboutPage() {
           ))}
         </ol>
         <table className="mt-6 w-full text-left text-sm sm:text-base">
-          <caption className="sr-only">Features and their benefits</caption>
+          <caption className="p-0 pb-2 text-left text-sm font-semibold uppercase tracking-[0.12em] text-muted">
+            What it does, strongest first
+          </caption>
           <thead>
             <tr className="border-b-2 border-ink text-muted">
               <th className="py-2 pr-4 font-normal">Feature</th>
-              <th className="py-2 font-normal">Benefit</th>
+              <th className="hidden py-2 pr-4 font-normal sm:table-cell">Benefit</th>
+              <th className="py-2 text-right font-normal">Status</th>
             </tr>
           </thead>
           <tbody>
-            {FEATURES_TO_BENEFITS.map(([feature, benefit]) => (
-              <tr key={feature} className="border-b border-line">
-                <td className="py-2 pr-4 font-medium">{feature}</td>
-                <td className="py-2">{benefit}</td>
+            {STRONGEST_FEATURES.map((f, i) => (
+              <tr key={f.feature} className="border-b border-line align-top">
+                <td className="py-2 pr-4">
+                  <span className="block font-medium">
+                    <span className="num mr-2 text-muted">{i + 1}</span>
+                    {f.feature}
+                  </span>
+                  <span className="block text-sm text-muted">{f.how}</span>
+                  <span className="block text-sm sm:hidden">{f.benefit}</span>
+                </td>
+                <td className="hidden py-2 pr-4 sm:table-cell">{f.benefit}</td>
+                <td className="py-2 text-right">
+                  <RealityBadge reality={f.reality} className="text-xs" />
+                </td>
               </tr>
             ))}
           </tbody>
@@ -260,19 +261,21 @@ export default function AboutPage() {
           <VoiceModelCard />
           <SwipeCard />
         </div>
-        <table className="mt-6 w-full rounded-card border border-line bg-surface text-left">
-          <caption className="p-3 text-left text-sm font-semibold uppercase tracking-[0.12em] text-muted">
-            Real vs simulated in this prototype
-          </caption>
-          <tbody>
-            {REAL.map(([part, status]) => (
-              <tr key={part} className="border-t border-line">
-                <td className="p-3 font-medium">{part}</td>
-                <td className="p-3 text-muted">{status}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <h3 className="mt-8 text-sm font-semibold uppercase tracking-[0.12em] text-muted">
+          Real vs estimated vs simulated in this prototype
+        </h3>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          {REALITY.map((group) => (
+            <section key={group.kind} className="break-inside-avoid rounded-card border border-line bg-surface p-4">
+              <RealityBadge reality={group.kind} className="text-sm" />
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
+                {group.items.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </section>
+          ))}
+        </div>
       </Section>
 
       <Section n="05" title="Roadmap">
@@ -285,7 +288,17 @@ export default function AboutPage() {
             </li>
           ))}
         </ol>
-        <p className="mt-4 text-muted">Upgrades: {UPGRADES.join(" · ")}.</p>
+        <h3 className="mt-6 text-sm font-semibold uppercase tracking-[0.12em] text-muted">
+          Improvements we need, most important first
+        </h3>
+        <ol className="mt-2 space-y-1.5">
+          {IMPROVEMENTS.map((u, i) => (
+            <li key={u.what}>
+              <span className="num mr-2 text-muted">{i + 1}</span>
+              <span className="font-medium">{u.what}:</span> <span className="text-muted">{u.why}</span>
+            </li>
+          ))}
+        </ol>
       </Section>
 
       <Section n="06" title="Conclusion">

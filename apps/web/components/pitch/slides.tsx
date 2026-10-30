@@ -1,4 +1,4 @@
-// The 14 pitch slides. Each renders into a fixed 1280×720 canvas that the deck
+// The 15 pitch slides. Each renders into a fixed 1280×720 canvas that the deck
 // scales to the screen, so sizes here are real projector sizes.
 
 import type { ReactNode } from "react";
@@ -13,7 +13,9 @@ import {
   Cite,
   CLOSING_LINE,
   CONCLUSION,
-  FEATURES_TO_BENEFITS,
+  IMPROVEMENTS,
+  REALITY,
+  RealityBadge,
   FLOW_STEPS,
   REFERENCES,
   ReferenceLine,
@@ -21,7 +23,7 @@ import {
   SENSE_DECIDE_INFORM,
   TAGLINE,
   TEAM,
-  UPGRADES,
+  STRONGEST_FEATURES,
   WHAT_RUNS_WHERE,
 } from "./content";
 
@@ -82,7 +84,7 @@ export const SLIDES: readonly Slide[] = [
     speaker: "Samira",
     notes: [
       "Samira: slides 1–3 (hook and problem). Kevin: 4 (justification). Kenny: 5–6 (solution, benefits).",
-      "Emmanuel: 7–10 (tech, ML, live demo). Hassan: 11–14 (roadmap, conclusion, references, questions).",
+      "Emmanuel: 7–11 (tech, features, ML, real vs simulated, live demo). Hassan: 12–15 (roadmap, conclusion, references, questions).",
       "About 7 minutes plus the demo.",
     ],
     body: (
@@ -220,8 +222,8 @@ export const SLIDES: readonly Slide[] = [
     section: "Solution",
     speaker: "Kenny",
     notes: [
-      "Passengers: fairness and certainty, and it works without a smartphone or reading.",
-      "Operators: fuller buses and less fuel wasted on empty trips.",
+      "Passengers: fairness and certainty, no smartphone needed. Choosing the stop is hands-free; confirming is one big button on screen.",
+      "Operators: the aim is fuller buses and less fuel wasted on empty trips. We haven't measured that yet; a pilot would.",
       "City and RURA: data to reach the 50% public-transport goal.",
     ],
     body: (
@@ -279,30 +281,39 @@ export const SLIDES: readonly Slide[] = [
   },
   // 8 ---------------------------------------------------------------------
   {
-    title: "Features to benefits",
+    title: "Strongest features first",
     section: "Tech",
     speaker: "Emmanuel",
     notes: [
-      "Each feature exists for a reason a passenger or operator feels.",
-      "Privacy: audio is processed on the board and never sent anywhere.",
-      "Humans stay in control: the system recommends, HQ approves.",
+      "Ranked by how complete and how valuable each feature is. The top three work end to end today.",
+      "Each row says honestly whether it is real, rule-based or estimated.",
+      "Swipes are not machine learning: the sensor detects direction itself. We measured 85–95% per direction, 20 tries each, one tester.",
+      "Hands-free means choosing the stop. Confirm and cancel are on-screen buttons; say so if asked.",
+      "The voice model runs on the board, but its accuracy is not measured yet. Say that plainly.",
     ],
     body: (
-      <Frame section="Tech" title="Features → benefits">
-        <table className="w-full text-left text-[22px]">
+      <Frame section="Tech" title="What it does, strongest first">
+        <table className="w-full text-left">
           <thead>
-            <tr className="border-b-2 border-ink text-[17px] uppercase tracking-[0.1em] text-muted">
-              <th className="pb-2 font-semibold">Feature</th>
-              <th className="w-10 pb-2" aria-hidden />
-              <th className="pb-2 font-semibold">Benefit</th>
+            <tr className="border-b-2 border-ink text-[15px] uppercase tracking-[0.1em] text-muted">
+              <th className="w-8 pb-1.5 font-semibold" aria-label="Rank" />
+              <th className="pb-1.5 font-semibold">Feature and how it works</th>
+              <th className="pb-1.5 font-semibold">Benefit</th>
+              <th className="pb-1.5 text-right font-semibold">Status</th>
             </tr>
           </thead>
           <tbody>
-            {FEATURES_TO_BENEFITS.map(([feature, benefit]) => (
-              <tr key={feature} className="border-b border-line">
-                <td className="py-3 pr-4 font-semibold">{feature}</td>
-                <td aria-hidden className="py-3 text-center">→</td>
-                <td className="py-3">{benefit}</td>
+            {STRONGEST_FEATURES.map((f, i) => (
+              <tr key={f.feature} className="border-b border-line align-top">
+                <td className="num py-1.5 text-[18px] text-muted">{i + 1}</td>
+                <td className="py-1.5 pr-4">
+                  <span className="block text-[19px] font-semibold leading-tight">{f.feature}</span>
+                  <span className="block text-[14px] leading-snug text-muted">{f.how}</span>
+                </td>
+                <td className="py-1.5 pr-3 text-[17px] leading-snug">{f.benefit}</td>
+                <td className="py-1.5 text-right">
+                  <RealityBadge reality={f.reality} className="text-[14px]" />
+                </td>
               </tr>
             ))}
           </tbody>
@@ -367,26 +378,57 @@ export const SLIDES: readonly Slide[] = [
   },
   // 10 --------------------------------------------------------------------
   {
+    title: "Real vs simulated",
+    section: "Tech",
+    speaker: "Emmanuel",
+    notes: [
+      "Be upfront: judges trust a team that says what is simulated.",
+      "Real: the board's voice model and swipes, the whole queue and dispatch system, phone GPS, roles.",
+      "Estimated: ETA uses a fixed average speed; seats are counted from tickets; our thresholds are guesses until a pilot.",
+      "Simulated: the card tap, other stops, and the indoor drive button. All data so far is from our tests.",
+    ],
+    body: (
+      <Frame section="Tech" title="What is real, estimated, simulated, not built">
+        <div className="grid grid-cols-4 gap-4">
+          {REALITY.map((group) => (
+            <section key={group.kind} className="rounded-card border border-line bg-surface p-4">
+              <RealityBadge reality={group.kind} className="text-[17px]" />
+              <ul className="mt-3 space-y-2.5">
+                {group.items.map((item) => (
+                  <li key={item} className="text-[18px] leading-snug">
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))}
+        </div>
+      </Frame>
+    ),
+  },
+  // 11 --------------------------------------------------------------------
+  {
     title: "Live demo",
     section: "Tech",
     speaker: "Emmanuel",
     notes: [
-      "Kiosk: tap the card reader → Test card → say “Remera” → Confirm → ticket (board LED pulses green).",
+      "Kiosk: tap the card reader → Test card → say “Remera” or swipe left → Confirm → ticket (it is read out loud).",
       "Dashboard: Approve the release recommendation → kiosk shows the bus and ETA.",
-      "Press Bus arrived → passengers boarded. Come back with ← or Alt+Tab.",
+      "Simulate drive (or the driver's phone GPS): the bus moves on the map, then Now boarding with the ticket called out.",
+      "Invite the room to open /live on their phones. Come back with ← or Alt+Tab.",
       "Fallback: tap a stop on screen if the room is noisy.",
     ],
     body: (
       <Frame section="Tech" title="Live demo">
         <p className="text-[28px]">A passenger, a queue number, and a bus released by HQ, live.</p>
-        <div className="mt-10 grid grid-cols-2 gap-6">
+        <div className="mt-10 grid grid-cols-3 gap-6">
           <a
             href="/kiosk"
             target="_blank"
             rel="noreferrer"
             className="flex h-40 flex-col justify-center rounded-card bg-accent px-8 text-paper transition-colors duration-200 ease-out hover:bg-ink"
           >
-            <span className="text-[40px] font-bold font-display">Open kiosk</span>
+            <span className="text-[32px] font-bold font-display">Open kiosk</span>
             <span className="num text-[20px] opacity-90">/kiosk</span>
           </a>
           <a
@@ -395,12 +437,21 @@ export const SLIDES: readonly Slide[] = [
             rel="noreferrer"
             className="flex h-40 flex-col justify-center rounded-card border-2 border-ink bg-surface px-8 transition-colors duration-200 ease-out hover:bg-paper"
           >
-            <span className="text-[40px] font-bold font-display">Open HQ dashboard</span>
+            <span className="text-[32px] font-bold font-display">HQ dashboard</span>
             <span className="num text-[20px] text-muted">/dashboard</span>
+          </a>
+          <a
+            href="/live"
+            target="_blank"
+            rel="noreferrer"
+            className="flex h-40 flex-col justify-center rounded-card border-2 border-ink bg-surface px-8 transition-colors duration-200 ease-out hover:bg-paper"
+          >
+            <span className="text-[32px] font-bold font-display">Live board</span>
+            <span className="num text-[20px] text-muted">/live · no sign-in</span>
           </a>
         </div>
         <ol className="mt-10 flex flex-wrap items-center gap-x-3 gap-y-2 text-[21px] text-muted">
-          {["Tap card", "Say “Remera”", "Confirm", "Ticket", "HQ approves", "ETA on kiosk", "Bus arrived", "Boarded"].map(
+          {["Tap card", "Say “Remera” or swipe", "Confirm", "Ticket", "HQ approves", "Bus drives (GPS)", "Now boarding"].map(
             (step, i, all) => (
               <li key={step} className="flex items-center gap-3">
                 <span className="text-ink">{step}</span>
@@ -409,10 +460,13 @@ export const SLIDES: readonly Slide[] = [
             ),
           )}
         </ol>
+        <p className="mt-10 rounded-card border-2 border-ink bg-surface px-6 py-4 text-[26px]">
+          Follow along on your phone: <span className="num font-bold">tap-and-select.vercel.app/live</span>
+        </p>
       </Frame>
     ),
   },
-  // 11 --------------------------------------------------------------------
+  // 12 --------------------------------------------------------------------
   {
     title: "Roadmap",
     section: "Conclusion",
@@ -420,10 +474,10 @@ export const SLIDES: readonly Slide[] = [
     notes: [
       "Today is a working prototype at one kiosk.",
       "Next, a pilot at 2–3 stops on one route, then the city.",
-      "Upgrades: a real card reader, a trained gesture model, more voices and Kinyarwanda accents, solar LTE kiosks.",
+      "Improvements, most important first: measure and grow the voice model, a one-week pilot at a real stop, a real card reader, exact seat counts, traffic-aware ETA, a street-ready kiosk.",
     ],
     body: (
-      <Frame section="Conclusion" title="Roadmap">
+      <Frame section="Conclusion" title="Roadmap and what we must improve">
         <ol className="relative grid grid-cols-3 gap-6">
           <span aria-hidden className="absolute top-[22px] right-[16%] left-[16%] h-0.5 bg-ink" />
           {ROADMAP_PHASES.map((p, i) => (
@@ -443,18 +497,24 @@ export const SLIDES: readonly Slide[] = [
             </li>
           ))}
         </ol>
-        <h3 className="mt-12 text-[17px] font-semibold uppercase tracking-[0.12em] text-muted">Upgrades</h3>
-        <ul className="mt-3 grid grid-cols-3 gap-3">
-          {UPGRADES.map((u) => (
-            <li key={u} className="rounded-card border border-line bg-surface px-4 py-3 text-[21px] leading-snug">
-              {u}
+        <h3 className="mt-6 text-[17px] font-semibold uppercase tracking-[0.12em] text-muted">
+          Improvements we need, most important first
+        </h3>
+        <ol className="mt-3 grid grid-cols-3 gap-3">
+          {IMPROVEMENTS.map((u, i) => (
+            <li key={u.what} className="rounded-card border border-line bg-surface px-4 py-2.5">
+              <span className="block text-[20px] font-semibold leading-tight">
+                <span className="num mr-2 text-muted">{i + 1}</span>
+                {u.what}
+              </span>
+              <span className="mt-0.5 block text-[16px] leading-snug text-muted">{u.why}</span>
             </li>
           ))}
-        </ul>
+        </ol>
       </Frame>
     ),
   },
-  // 12 --------------------------------------------------------------------
+  // 13 --------------------------------------------------------------------
   {
     title: "Conclusion",
     section: "Conclusion",
@@ -477,7 +537,7 @@ export const SLIDES: readonly Slide[] = [
       </Frame>
     ),
   },
-  // 13 --------------------------------------------------------------------
+  // 14 --------------------------------------------------------------------
   {
     title: "References",
     section: "Conclusion",
@@ -495,7 +555,7 @@ export const SLIDES: readonly Slide[] = [
       </Frame>
     ),
   },
-  // 14 --------------------------------------------------------------------
+  // 15 --------------------------------------------------------------------
   {
     title: "Thank you",
     section: null,
