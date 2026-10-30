@@ -3,6 +3,7 @@
 
 import type { ReactNode } from "react";
 import { RouteBadge } from "@/components/RouteBadge";
+import { IdeaStoryboard } from "./IdeaStoryboard";
 import { JourneyComic } from "./JourneyComic";
 import { HomeLink } from "@/components/HomeLink";
 import { DESTINATIONS } from "@/lib/destinations";
@@ -84,7 +85,7 @@ export const SLIDES: readonly Slide[] = [
     speaker: "Samira",
     notes: [
       "Samira: slides 1–3 (hook and problem). Kevin: 4 (justification). Kenny: 5–6 (solution, benefits).",
-      "Emmanuel: 7–11 (tech, features, ML, real vs simulated, live demo). Hassan: 12–15 (roadmap, conclusion, references, questions).",
+      "Emmanuel: 7–12 (tech, features, ML, real vs simulated, the whole idea, live demo). Hassan: 13–16 (roadmap, conclusion, references, questions).",
       "About 7 minutes plus the demo.",
     ],
     body: (
@@ -392,6 +393,22 @@ export const SLIDES: readonly Slide[] = [
   },
   // 11 --------------------------------------------------------------------
   {
+    title: "The whole idea",
+    section: "Tech",
+    speaker: "Emmanuel",
+    notes: [
+      "Before the demo, tell the story once: Sense (1), Decide (2–3), Inform (4–5), Next (6).",
+      "Say: these are drawings of the idea; the next slide shows the working prototype doing panels 1 to 5.",
+      "Panel 6 is the vision, not built: a pilot on one route first.",
+    ],
+    body: (
+      <Frame section="Tech" title="The whole idea, start to finish">
+        <IdeaStoryboard />
+      </Frame>
+    ),
+  },
+  // 12 --------------------------------------------------------------------
+  {
     title: "Live demo",
     section: "Tech",
     speaker: "Emmanuel",
@@ -450,7 +467,7 @@ export const SLIDES: readonly Slide[] = [
       </Frame>
     ),
   },
-  // 12 --------------------------------------------------------------------
+  // 13 --------------------------------------------------------------------
   {
     title: "Roadmap",
     section: "Conclusion",
@@ -498,7 +515,7 @@ export const SLIDES: readonly Slide[] = [
       </Frame>
     ),
   },
-  // 13 --------------------------------------------------------------------
+  // 14 --------------------------------------------------------------------
   {
     title: "Conclusion",
     section: "Conclusion",
@@ -521,7 +538,7 @@ export const SLIDES: readonly Slide[] = [
       </Frame>
     ),
   },
-  // 14 --------------------------------------------------------------------
+  // 15 --------------------------------------------------------------------
   {
     title: "References",
     section: "Conclusion",
@@ -539,7 +556,7 @@ export const SLIDES: readonly Slide[] = [
       </Frame>
     ),
   },
-  // 15 --------------------------------------------------------------------
+  // 16 --------------------------------------------------------------------
   {
     title: "Thank you",
     section: null,
