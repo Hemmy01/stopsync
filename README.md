@@ -1,26 +1,33 @@
 # Tap&Select
 
 A smart bus stop prototype for Kigali: a **digital waiting list for buses**.
-Built in the CMU-Africa Bridge Program.
+A group project by Emmanuel, Samira, Kevin, Kenny and Hassan in the CMU-Africa Bridge Program 2026.
 
-1. A passenger **taps a card** at the kiosk.
-2. They choose their stop by **voice** or a **tap gesture** over the proximity sensor
-   on an Arduino Nano 33 BLE Sense Lite: an Edge Impulse voice model and, for now, a rule-based tap
-   detector (a trained tap model is planned).
-3. They confirm and get a **queue number** such as `R3-014`.
+**Live demo:** <https://tap-and-select.vercel.app> · audience board (no sign-in): <https://tap-and-select.vercel.app/live>
+· pitch deck: <https://tap-and-select.vercel.app/pitch>
+
+1. A passenger **taps a card** at the kiosk (simulated on screen in the prototype).
+2. They choose their stop hands-free, by **voice** or a **swipe** over the sensor of an Arduino Nano
+   33 BLE Sense Lite: an Edge Impulse keyword model for voice, and the sensor's own direction engine
+   for swipes (rule-based, no ML).
+3. They tap **Confirm** and get a **queue number** such as `R2-014`, which the kiosk also reads out.
 4. HQ sees live demand on a **dashboard**, gets a "release a bus" recommendation, and approves it.
 5. The kiosk shows the **bus status and ETA**, updated from the driver's phone GPS.
-6. When the bus arrives, waiting passengers are marked **boarded**.
+6. When the bus arrives, waiting passengers board **in ticket order** and the kiosk calls them out.
 
 **Sense** (who is waiting) → **Decide** (when to send a bus) → **Inform** (number and ETA).
 Architecture diagrams: [`docs/architecture.md`](docs/architecture.md).
 
 | Screen | Path | Used on |
 |---|---|---|
-| Home | `/` | anywhere |
+| Home | `/` | anywhere; lists Kiosk, Dashboard and Bus |
+| Sign in | `/login` | email + password, or **Demo login as…** in demo mode |
 | Kiosk | `/kiosk` | laptop at the stop, Chrome, board plugged in by USB |
 | HQ dashboard | `/dashboard` | desktop or tablet |
 | Bus driver | `/bus` | phone in the bus (needs HTTPS for GPS) |
+| Live board | `/live` | the audience's phones, via the QR code on the pitch; public and read-only |
+| Users | `/admin/users` | admins: roles and drivers' buses |
+| Pitch | `/pitch` | the presentation (13 slides) |
 | About | `/about` | judges; printable |
 
 ---
@@ -28,7 +35,7 @@ Architecture diagrams: [`docs/architecture.md`](docs/architecture.md).
 ## Repository
 
 ```
-apps/web/                 Next.js app (kiosk, dashboard, bus page, about)
+apps/web/                 Next.js app (kiosk, dashboard, bus page, live board, pitch, about)
 supabase/                 migrations, seed and CLI config
 firmware/kiosk_node/      Arduino sketch: protocol, LEDs, rule taps, voice + gesture model hooks
 firmware/README.md        build/upload, tuning, two-model options, "When the models arrive"
@@ -56,20 +63,23 @@ cp ../.env.example .env.local     # fill the NEXT_PUBLIC_* lines; leave the SUPA
 npm run dev                        # http://localhost:3000
 ```
 
-`apps/web/.env.local` (ask Danny for the URL and anon key):
+`apps/web/.env.local` (ask the repository owner, [Hemmy01](https://github.com/Hemmy01), for the URL and anon key):
 
 ```zsh
 NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon or publishable key>
 NEXT_PUBLIC_STOP_ID=STOP-01
 NEXT_PUBLIC_DEMO_MODE=true          # shows "Demo login as…" on /login
-DEMO_PASSWORD=<the demo accounts' password>   # server-only, ask Danny
+DEMO_PASSWORD=<the demo accounts' password>   # server-only, ask the repository owner
 ```
 
 Every screen needs a signed-in account (see [Accounts and roles](#accounts-and-roles)); open
 <http://localhost:3000/login> and use **Demo login as…**.
 
-Use the **anon / publishable** key only; never the `service_role` or secret key. `.env*` files are
+Use the **anon / publishable** key only; never the `service_role` or secret key. The URL and anon key
+are public by design (the deployed site sends them to every browser) and the database's role rules
+protect the data, but share them privately anyway. Never share the service-role key, the database
+password, the Supabase access token or `DEMO_PASSWORD` outside the team. `.env*` files are
 git-ignored; only `.env.example` is committed. The shared Supabase project is already set up.
 
 **Without the board:** open <http://localhost:3000/kiosk?mock=1> or press **D** on the kiosk. The
@@ -80,7 +90,7 @@ same parser as real serial, and shows the raw serial log.
 |---|---|
 | `npm run dev` | Development server on port 3000 |
 | `npm run lint` · `npm run typecheck` | ESLint · route types + `tsc --noEmit` |
-| `npm test` | Vitest: protocol, kiosk reducer, ETA, dashboard, serial, GPS, models.json, config.h consistency |
+| `npm test` | Vitest: protocol, kiosk reducer, ETA, dashboard, serial, GPS, routes, sign-in and roles, kiosk text and announcements, simulate drive, models.json, config.h consistency |
 | `npm run build` | Production build |
 | `npm run check` | All of the above in order (run before every commit) |
 
@@ -129,7 +139,8 @@ Gesture reliability is measured with `firmware/scripts/gesture-trials.mjs` (`ml/
 | Model | Status | Library |
 |---|---|---|
 | Voice | trained, in the default build | `tap-and-select-voice_inferencing` (`ml/exports/ei-tap-and-select-voice-*.zip`) |
-| Gestures | rule-based taps until exported | set `GESTURE_MODEL_HEADER` in `config.h` |
+| Swipes | default build, no ML: the APDS9960's direction engine (85–95% per direction in 20-try tests) | none |
+| Tap gestures | not trained; the older rule-based taps remain a build switch (`GESTURE_RULE`) | set `GESTURE_MODEL_HEADER` in `config.h` once exported |
 
 Board test script, `DEBUG_SCORES` tuning and troubleshooting (port busy, wrong library, overrun):
 [`firmware/README.md`](firmware/README.md). Results go in `ml/results/` and `apps/web/content/models.json`.
@@ -155,7 +166,8 @@ Everything in the database comes from `supabase/migrations/` and `supabase/seed.
 
 Functions: `create_token`, `run_dispatch` (every minute via **pg_cron**), `approve_decision`,
 `dismiss_decision`, `update_bus_location`, `mark_bus_arrived`, `complete_trip`, `adjust_occupancy`,
-`reset_bus`, `log_selection`, `reset_demo`, `cancel_token` (and the internal `board_queue`, `release_for_decision`).
+`reset_bus`, `log_selection`, `reset_demo`, `cancel_token`, `choose_my_bus`, `taken_buses`,
+`simulate_bus_position`, `live_board` (and the internal `board_queue`, `release_for_decision`).
 
 **Live tracking.** Each GPS fix from `/bus` (`update_bus_location`) is stored in `bus_positions`, then
 projected onto the bus's route: that gives the last stop passed, the next stop, stops remaining
@@ -166,7 +178,8 @@ straight line to the kiosk. The dashboard shows every bus on a Leaflet + OpenStr
 kiosk ticket shows a stop-by-stop strip ("Bus R2-01 · passed Kimihurura · 2 stops away · about 6 min").
 Stop coordinates are approximate.
 
-**Driver phone (`/bus`).** The driver picks their bus once (the phone remembers it). When HQ
+**Driver phone (`/bus`).** A driver signs in and picks the bus they drive this shift (see
+[Drivers pick their bus per shift](#accounts-and-roles)); **Change bus** switches it later. When HQ
 releases that bus, GPS sharing starts by itself; it stops by itself when the bus arrives at the
 end of its route (the kiosk). While tracking, the page shows **Tracking on** and keeps the screen
 awake (Screen Wake Lock API). Phones pause location for hidden pages and locked screens, so the
@@ -209,6 +222,13 @@ reason and time, the people behind move up, and the kiosk sends `CANCEL` to the 
 ticket can't be cancelled. The dashboard shows **Why people left (today)** and the cancellation
 rate (cancelled today ÷ tickets issued or cancelled today).
 
+**Live board (`/live`).** A public, read-only page for the audience: departures, queue counts per
+destination, **Now boarding** and the map, refreshed every 5 seconds through `live_board()`, the only
+function the anon key may call (it returns counts and bus positions, never card ids). It is not listed
+on the home page; people reach it from the QR code on pitch slides 9 and 13
+(`apps/web/public/pitch/live-qr.svg`) or the About page. Regenerate the QR code if the URL changes:
+`npx qrcode@1.5.4 -t svg -e M -q 2 -d 111418 -l ffffff -o apps/web/public/pitch/live-qr.svg "<url>/live"`.
+
 **Simulate drive (presentation aid).** On the dashboard, a released bus has **Simulate drive**: it
 moves along its real route from the terminal to the kiosk in about a minute (one step every 1.5 s),
 through `simulate_bus_position` (dispatcher or admin, only for a bus on the way), which runs the same
@@ -238,7 +258,8 @@ call ("Bus R 2, 0 1 to Remera is now boarding tickets …"), with the browser's 
 (remembered in that browser). Announcements are **held while the board is listening**, so the kiosk
 never says a stop name into the board's microphone. They are always in English, since browsers rarely ship a
 Kinyarwanda voice. Chrome only starts speaking after someone has clicked on the page once, which a
-card tap does.
+card tap does. The ETA is shown on screen but not spoken. A bus calls only the tickets waiting when it
+arrives; tickets made while it is already parked wait for the next bus.
 
 ### SQL scenario tests
 
@@ -248,11 +269,12 @@ supabase/tests/run.sh --with supabase/migrations/<new>.sql    # try a migration 
 ```
 
 Each test runs inside a transaction against the linked project and **always rolls back**, so it is
-safe on the real database. `fifo_queue_test.sql` checks 27 boarding, dispatch and auto-dispatch
-scenarios and `cancel_token_test.sql` 9 cancellation ones; a failure prints the check's name and exits non-zero. (pgTAP needs a local Docker
+safe on the real database. 105 checks in six files: roles (40), FIFO boarding and dispatch (27),
+drivers' shift bus (13), cancellation (9), live board (9) and simulate drive (7). A failure prints
+the check's name and exits non-zero. (pgTAP needs a local Docker
 database, which this setup doesn't use.)
 
-### Changing the schema (Danny)
+### Changing the schema (maintainers)
 
 Put the CLI values in a git-ignored `.env.local` at the repo root
 (`SUPABASE_PROJECT_REF`, `SUPABASE_DB_PASSWORD`, `SUPABASE_ACCESS_TOKEN`; see `.env.example`), then:
@@ -307,12 +329,7 @@ confirm**, same password for all five:
 | `kiosk@tapselect.demo` | kiosk (also used by the simulator) |
 | `viewer@tapselect.demo` | viewer |
 
-They get their roles automatically on creation.
-
-**Drivers pick their bus per shift.** On `/bus` a driver taps **Change bus** and picks any bus no
-other driver holds (`choose_my_bus`; taken buses are greyed out via `taken_buses`). The database
-then accepts that driver's GPS, seat corrections and arrival only for that bus. Changing bus stops
-sharing location for the old one first. Admins can still assign a driver's bus on **Users**. Put that password in `DEMO_PASSWORD` and set
+They get their roles automatically on creation. Put that password in `DEMO_PASSWORD` and set
 `NEXT_PUBLIC_DEMO_MODE=true` to show **Demo login as…** on `/login`; the panel signs in through
 `/api/demo-login` on the server, so the password never reaches the browser.
 `NEXT_PUBLIC_DEMO_ROLES` picks the buttons (enforced by the server route too): unset means kiosk,
@@ -321,6 +338,16 @@ sign in as `admin@tapselect.demo` with the password. If Supabase's per-network s
 (many people signing in at once), the page says so; the audience should use the Live board instead. In Supabase →
 Authentication → Sign In / Providers, keep **Email** on and turn **Confirm email** off so
 sign-ups work without email delivery.
+
+**Drivers pick their bus per shift.** On `/bus` a driver taps **Change bus** and picks any bus no
+other driver holds (`choose_my_bus`; taken buses are greyed out via `taken_buses`, **Keep** goes
+back). The database then accepts that driver's GPS, seat corrections and arrival only for that bus.
+Changing bus stops sharing location for the old one first. Admins can still assign a driver's bus
+on **Users**.
+
+**Account menu.** The person icon on every screen lists the screens your role can open, plus
+**Sign out or switch account**. After signing in you land on the page you asked for if your role
+can open it, otherwise on your role's own screen.
 
 > Demo mode lets anyone with the URL sign in as any role, admin included. Turn it off
 > (`NEXT_PUBLIC_DEMO_MODE=false`) and change the demo password for anything beyond the demo.
@@ -368,10 +395,22 @@ The `https://` address is required for Web Serial on the kiosk and GPS on the ph
 
 ---
 
+## Pitch
+
+`/pitch` is the presentation: 13 slides (← → to move, **F** fullscreen, **N** speaker notes).
+Problem with cited facts, the justification paragraph (topic, development, evidence, summary),
+the solution, a five-panel comic of how a passenger uses it, what is real, estimated, simulated or
+not built, on-device recognition, a six-panel storyboard of the whole idea right before the live
+demo, the roadmap, the conclusion and references. The drawings are inline SVG in
+`apps/web/components/pitch/` (`JourneyComic.tsx`, `IdeaStoryboard.tsx`); text lives in
+`content.tsx`. `/about` is the printable version with the full feature ranking.
+
 ## Demo and rehearsal
 
 - [`docs/demo-script.md`](docs/demo-script.md): the live demo step by step, with a fallback for every step.
 - [`docs/rehearsal-checklist.md`](docs/rehearsal-checklist.md): what to check the day before and an hour before.
+- [`docs/feature-tour.md`](docs/feature-tour.md): a 30-minute walk through every feature.
+- Before presenting: **Reset demo** on the dashboard, and scan the QR code from the projector once.
 
 ## Troubleshooting
 
@@ -384,3 +423,6 @@ The `https://` address is required for Web Serial on the kiosk and GPS on the ph
 | `/bus` says location only works over HTTPS | Open the deployed `https://` URL on the phone (plain `http://192.168…` won't work). |
 | "Supabase is not configured" banner | Create `apps/web/.env.local` with the three values and restart `npm run dev`. |
 | Recommendations never change | pg_cron runs `run_dispatch()` every minute; use **Recompute now** to run it immediately. |
+| No boarding call after **Bus arrived** | The bus was already parked when the ticket was made: **Reset bus**, approve again, then arrive. Check the kiosk's speaker icon is on. |
+| Simulated bus stops moving | Switch pages with the in-app links; reloading or closing the tab stops the drive. |
+| Driver can't pick a bus | It's greyed out because another driver holds it; pick another or ask an admin. |
