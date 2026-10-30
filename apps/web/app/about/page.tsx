@@ -11,7 +11,6 @@ import {
   IMPROVEMENTS,
   REALITY,
   RealityBadge,
-  FLOW_STEPS,
   REFERENCES,
   ReferenceLine,
   ROADMAP_PHASES,
@@ -20,6 +19,7 @@ import {
   TEAM,
   STRONGEST_FEATURES,
 } from "@/components/pitch/content";
+import { JourneyComic } from "@/components/pitch/JourneyComic";
 import { RouteBadge } from "@/components/RouteBadge";
 import { HomeLink } from "@/components/HomeLink";
 import { DESTINATIONS, NON_SELECTING_VOICE_LABELS } from "@/lib/destinations";
@@ -218,15 +218,7 @@ export default function AboutPage() {
       </Section>
 
       <Section n="04" title="How it works">
-        <ol className="grid gap-3 sm:grid-cols-5">
-          {FLOW_STEPS.map((s) => (
-            <li key={s.n} className="rounded-card border border-line bg-surface p-4">
-              <span className="num text-sm text-muted">{s.n}</span>
-              <h3 className="text-base leading-tight">{s.title}</h3>
-              <p className="mt-1 text-sm text-muted">{s.detail}</p>
-            </li>
-          ))}
-        </ol>
+        <JourneyComic size="page" />
         <table className="mt-6 w-full text-left text-sm sm:text-base">
           <caption className="p-0 pb-2 text-left text-sm font-semibold uppercase tracking-[0.12em] text-muted">
             What it does, strongest first

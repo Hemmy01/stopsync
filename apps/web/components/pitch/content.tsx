@@ -346,7 +346,7 @@ export const FLOW_STEPS = [
   { n: 1, title: "Tap card", detail: "Tap&Go; simulated reader in the prototype" },
   { n: 2, title: "Say the stop or swipe", detail: "Voice or a swipe over the sensor" },
   { n: 3, title: "Arduino recognises it", detail: "On-device, no internet" },
-  { n: 4, title: "Confirm, get a number", detail: "Tap Confirm on screen; ticket e.g. R3-014" },
+  { n: 4, title: "Confirm, get a number", detail: "Tap Confirm on screen; ticket e.g. R2-014" },
   { n: 5, title: "HQ releases the bus", detail: "Kiosk shows the live ETA" },
 ] as const;
 
