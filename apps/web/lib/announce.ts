@@ -24,5 +24,27 @@ export function boardingAnnouncement(
   return `Bus ${spellCode(busId)} to ${destinationName} is now boarding ${tickets}.`;
 }
 
-/** Identifies one boarding call, so it is announced once. */
-export const boardingKey = (b: { busId: string; lastCode: string; count: number }) => `${b.busId}:${b.lastCode}:${b.count}`;
+export interface BoardingCall {
+  busId: string;
+  destination: string;
+  firstCode: string;
+  lastCode: string;
+}
+
+/** Identifies one called ticket on one bus. */
+export const calledKey = (busId: string, code: string) => `${busId}:${code}`;
+
+/**
+ * The tickets each bus called that haven't been announced yet, one call per bus. A parked bus
+ * that takes a new ticket announces just that ticket, not the whole range again.
+ */
+export function unannouncedCalls(
+  boardings: readonly { busId: string; destination: string; codes: readonly string[] }[],
+  announced: ReadonlySet<string>,
+): BoardingCall[] {
+  return boardings.flatMap((b) => {
+    const fresh = b.codes.filter((code) => !announced.has(calledKey(b.busId, code)));
+    if (fresh.length === 0) return [];
+    return [{ busId: b.busId, destination: b.destination, firstCode: fresh[0], lastCode: fresh[fresh.length - 1] }];
+  });
+}

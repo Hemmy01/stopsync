@@ -571,6 +571,10 @@ export type Database = {
       }
       app_role: { Args: never; Returns: string }
       approve_decision: { Args: { p_decision: number }; Returns: Json }
+      board_parked_bus: {
+        Args: { p_dest: string; p_stop: string }
+        Returns: Json
+      }
       board_queue: { Args: { p_bus: string; p_stop: string }; Returns: Json }
       bus_free_places: {
         Args: { b: Database["public"]["Tables"]["buses"]["Row"] }

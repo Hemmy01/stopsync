@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Banner } from "@/components/Banner";
-import { boardingAnnouncement, boardingKey, ticketAnnouncement } from "@/lib/announce";
+import { boardingAnnouncement, calledKey, ticketAnnouncement, unannouncedCalls } from "@/lib/announce";
 import { getDestination } from "@/lib/destinations";
 import { boardingNow, findTicket, queuePosition, ticketStatus, type Boarding } from "@/lib/queue";
 import { trackBusFor } from "@/lib/routes";
@@ -104,8 +104,8 @@ function BoardBanners({ supported, connection, serialError, noHello, mockMode, o
 const destinationName = (code: string) => getDestination(code)?.name ?? code;
 
 /**
- * Reads out each new ticket once, and each new boarding call once. Calls already on the board
- * when the kiosk opens are not read out.
+ * Reads out each new ticket once, and each newly called ticket once (a parked bus taking one more
+ * ticket announces just that one). Calls already on the board when the kiosk opens are not read out.
  */
 function useAnnouncements(
   ticket: { code: string; destination: string } | null,
@@ -114,7 +114,7 @@ function useAnnouncements(
   say: (text: string) => void,
 ) {
   const spokenTicket = useRef<string | null>(null);
-  const seenBoardings = useRef<Set<string> | null>(null);
+  const announced = useRef<Set<string> | null>(null);
 
   useEffect(() => {
     if (!ticket || spokenTicket.current === ticket.code) return;
@@ -124,17 +124,15 @@ function useAnnouncements(
 
   useEffect(() => {
     if (loading) return;
-    const keys = boardings.map(boardingKey);
-    if (seenBoardings.current === null) {
-      seenBoardings.current = new Set(keys);
+    const keys = boardings.flatMap((b) => b.codes.map((code) => calledKey(b.busId, code)));
+    if (announced.current === null) {
+      announced.current = new Set(keys);
       return;
     }
-    for (const b of boardings) {
-      const key = boardingKey(b);
-      if (seenBoardings.current.has(key)) continue;
-      seenBoardings.current.add(key);
-      say(boardingAnnouncement(b.busId, destinationName(b.destination), b.firstCode, b.lastCode));
+    for (const call of unannouncedCalls(boardings, announced.current)) {
+      say(boardingAnnouncement(call.busId, destinationName(call.destination), call.firstCode, call.lastCode));
     }
+    for (const key of keys) announced.current.add(key);
   }, [boardings, loading, say]);
 }
 

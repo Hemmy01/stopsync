@@ -167,7 +167,7 @@ Everything in the database comes from `supabase/migrations/` and `supabase/seed.
 Functions: `create_token`, `run_dispatch` (every minute via **pg_cron**), `approve_decision`,
 `dismiss_decision`, `update_bus_location`, `mark_bus_arrived`, `complete_trip`, `adjust_occupancy`,
 `reset_bus`, `log_selection`, `reset_demo`, `cancel_token`, `choose_my_bus`, `taken_buses`,
-`simulate_bus_position`, `live_board` (and the internal `board_queue`, `release_for_decision`).
+`simulate_bus_position`, `live_board` (and the internal `board_queue`, `board_parked_bus`, `release_for_decision`).
 
 **Live tracking.** Each GPS fix from `/bus` (`update_bus_location`) is stored in `bus_positions`, then
 projected onto the bus's route: that gives the last stop passed, the next stop, stops remaining
@@ -207,7 +207,11 @@ Everyone else keeps their order, and the kiosk ticket shows its live position. T
 - at the kiosk: GPS inside `arrival_radius_m`, the driver's **I've arrived**, or HQ's **Bus arrived**;
 - along the route: GPS within `arrival_radius_m` of a stop on the bus's route (a released bus also
   boards at its terminal), which is how the simulator's tickets at `STOP-02`…`STOP-06` are served;
-- for early or unscheduled buses (never released by HQ) the same way.
+- for early or unscheduled buses (never released by HQ) the same way;
+- while a bus is **parked at the stop** (arrived, not yet reset): a new ticket for its route boards
+  it straight away if it has free places (`board_parked_bus`, called by `create_token`, through the
+  same `board_queue`, so older waiting tickets still go first). A full parked bus takes nobody; the
+  ticket waits for the next bus.
 
 The kiosk shows a **Now boarding** row ("R2-01 boarding tickets R2-010–R2-045"), and a called
 ticket says "Your bus is here, please board". Dispatch only counts tickets at stops the route
@@ -258,8 +262,8 @@ call ("Bus R 2, 0 1 to Remera is now boarding tickets …"), with the browser's 
 (remembered in that browser). Announcements are **held while the board is listening**, so the kiosk
 never says a stop name into the board's microphone. They are always in English, since browsers rarely ship a
 Kinyarwanda voice. Chrome only starts speaking after someone has clicked on the page once, which a
-card tap does. The ETA is shown on screen but not spoken. A bus calls only the tickets waiting when it
-arrives; tickets made while it is already parked wait for the next bus.
+card tap does. The ETA is shown on screen but not spoken. When a parked bus takes a new ticket, only
+that ticket is called ("…now boarding ticket R 2, 0 2 7"), not the whole range again.
 
 ### SQL scenario tests
 
@@ -269,8 +273,8 @@ supabase/tests/run.sh --with supabase/migrations/<new>.sql    # try a migration 
 ```
 
 Each test runs inside a transaction against the linked project and **always rolls back**, so it is
-safe on the real database. 105 checks in six files: roles (40), FIFO boarding and dispatch (27),
-drivers' shift bus (13), cancellation (9), live board (9) and simulate drive (7). A failure prints
+safe on the real database. 116 checks in seven files: roles (40), FIFO boarding and dispatch (27),
+drivers' shift bus (13), parked bus (11), cancellation (9), live board (9) and simulate drive (7). A failure prints
 the check's name and exits non-zero. (pgTAP needs a local Docker
 database, which this setup doesn't use.)
 
@@ -423,6 +427,6 @@ demo, the roadmap, the conclusion and references. The drawings are inline SVG in
 | `/bus` says location only works over HTTPS | Open the deployed `https://` URL on the phone (plain `http://192.168…` won't work). |
 | "Supabase is not configured" banner | Create `apps/web/.env.local` with the three values and restart `npm run dev`. |
 | Recommendations never change | pg_cron runs `run_dispatch()` every minute; use **Recompute now** to run it immediately. |
-| No boarding call after **Bus arrived** | The bus was already parked when the ticket was made: **Reset bus**, approve again, then arrive. Check the kiosk's speaker icon is on. |
+| No boarding call after **Bus arrived** | Check the kiosk's speaker icon is on, and that the kiosk page was open before the bus arrived (calls already on the board when it opens are not read out). A full parked bus takes no new tickets. |
 | Simulated bus stops moving | Switch pages with the in-app links; reloading or closing the tab stops the drive. |
 | Driver can't pick a bus | It's greyed out because another driver holds it; pick another or ask an admin. |
