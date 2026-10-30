@@ -179,6 +179,21 @@ export const SENSE_DECIDE_INFORM = [
   { step: "Inform", detail: "Passengers get a fair queue number and a live ETA." },
 ] as const;
 
+/** One line per group, for the solution slide (the full text is on /about). */
+export const BENEFITS_SHORT: readonly { who: string; text: ReactNode }[] = [
+  { who: "Passengers", text: <>A fair place in line and a live ETA; no smartphone needed.</> },
+  { who: "Operators", text: <>The aim: fuller buses and fewer empty trips.</> },
+  {
+    who: "City and RURA",
+    text: (
+      <>
+        Demand data towards the 50% public-transport goal.
+        <Cite n={5} />
+      </>
+    ),
+  },
+];
+
 export const BENEFITS: readonly { who: string; text: ReactNode }[] = [
   {
     who: "Passengers",

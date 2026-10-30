@@ -56,7 +56,7 @@ On the laptop, as Admin or Dispatcher, approve a recommendation first and note w
 
 ## 5. Live board for the audience (1 min)
 
-- [ ] On any phone, **without signing in**, scan the QR on pitch slide 12 (or open `/live`): departures, queue counts, Now boarding and the map, refreshing every few seconds.
+- [ ] On any phone, **without signing in**, scan the QR on pitch slide 9 (or open `/live`): departures, queue counts, Now boarding and the map, refreshing every few seconds.
 
 ## 6. Pitch and About (2 min)
 
