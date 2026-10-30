@@ -205,16 +205,140 @@ export const BENEFITS: readonly { who: string; text: ReactNode }[] = [
   },
 ];
 
-export const FEATURES_TO_BENEFITS: readonly [string, string][] = [
-  [
-    "On-device voice AI (Arduino Nano 33 BLE Sense)",
-    "Works offline, fast, and no audio ever leaves the board (privacy)",
-  ],
-  ["Tap gestures over a sensor", "No touchscreen, so it’s hygienic and accessible"],
-  ["Confirm step plus tap-a-tile fallback", "A wrong guess never blocks a passenger"],
-  ["Dispatch rules with a human approving", "Operators stay in control"],
-  ["One waiting ticket per card", "No holding places for absent friends"],
-  ["Real-time dashboard and GPS ETA", "Everyone sees the same live picture"],
+// ---------------------------------------------------------------------------
+// Honest inventory: strongest features first, and what is real vs not.
+// Numbers come from ml/results/gesture-trials.md and content/models.json only.
+// ---------------------------------------------------------------------------
+
+export type Reality = "Real" | "Real, rule-based" | "Estimated" | "Simulated" | "Not built";
+
+export interface RankedFeature {
+  feature: string;
+  /** How it works, in one line. */
+  how: string;
+  benefit: string;
+  reality: Reality;
+}
+
+const REALITY_STYLE: Record<Reality, string> = {
+  Real: "border-accent text-accent",
+  "Real, rule-based": "border-accent text-accent",
+  Estimated: "border-warn text-ink",
+  Simulated: "border-muted text-muted",
+  "Not built": "border-danger text-danger",
+};
+
+/** The status in words, outlined in a matching colour (never colour alone). */
+export function RealityBadge({ reality, className = "" }: { reality: Reality; className?: string }) {
+  return (
+    <span
+      className={`inline-flex items-center whitespace-nowrap rounded-pill border-2 px-2.5 font-semibold ${REALITY_STYLE[reality]} ${className}`}
+    >
+      {reality}
+    </span>
+  );
+}
+
+/** Strongest first: what is most complete and most valuable leads. */
+export const STRONGEST_FEATURES: readonly RankedFeature[] = [
+  {
+    feature: "Live demand → dispatch loop",
+    how: "Tickets reach HQ in about 1 s; rules recommend a release; a person approves",
+    benefit: "Buses leave for a reason; HQ stays in control",
+    reality: "Real",
+  },
+  {
+    feature: "Fair first-come queue",
+    how: "Numbered tickets, one per card; the oldest board first, up to free seats",
+    benefit: "No pushing and no holding places",
+    reality: "Real",
+  },
+  {
+    feature: "Live bus tracking",
+    how: "Driver's phone GPS: stop-by-stop progress, arrival within 50 m",
+    benefit: "Passengers see where their bus is",
+    reality: "Real",
+  },
+  {
+    feature: "Swipe to choose a stop",
+    how: "Sensor direction engine, no ML; 85–95% per direction in 20-try tests",
+    benefit: "No touchscreen: hygienic and quick",
+    reality: "Real, rule-based",
+  },
+  {
+    feature: "On-device voice keywords",
+    how: "Edge Impulse model on the Arduino; accuracy not yet measured",
+    benefit: "Works offline and keeps voices private",
+    reality: "Real",
+  },
+  {
+    feature: "Accounts and roles",
+    how: "Five roles; rights enforced in the database",
+    benefit: "Each person sees and does only their part",
+    reality: "Real",
+  },
+  {
+    feature: "Access for everyone",
+    how: "English + Kinyarwanda (draft), spoken numbers, tap fallback, /live",
+    benefit: "Works without reading or a smartphone",
+    reality: "Real",
+  },
+  {
+    feature: "Seats and why people leave",
+    how: "Seats counted from tickets; cancel reasons so far from our tests only",
+    benefit: "Shows full buses and why people give up",
+    reality: "Estimated",
+  },
+];
+
+/** What the prototype really does, grouped. Shown on its own slide and on /about. */
+export const REALITY: readonly { kind: Reality; items: readonly string[] }[] = [
+  {
+    kind: "Real",
+    items: [
+      "Voice keyword model running on the Arduino",
+      "Swipe detection by the sensor (rule-based, no ML)",
+      "Queue, dispatch rules, dashboard and live updates",
+      "Phone GPS tracking and arrival by GPS",
+      "Sign-in, roles and the public live board",
+    ],
+  },
+  {
+    kind: "Estimated",
+    items: [
+      "ETA: remaining route distance ÷ an average 18 km/h, no traffic data",
+      "Seats on board: counted from tickets, corrected by the driver",
+      "Release thresholds (70% load, 15 min): our guesses, not yet tuned",
+    ],
+  },
+  {
+    kind: "Simulated",
+    items: [
+      "Card tap: demo cards on screen",
+      "Passengers at other stops: a simulator script",
+      "“Simulate drive” for indoor demos, and one-click demo logins",
+      "All queue and cancel data so far comes from our own tests",
+    ],
+  },
+  {
+    kind: "Not built",
+    items: [
+      "Real RFID / Tap&Go reader and payment",
+      "A trained tap-gesture model",
+      "Voice accuracy on new voices and Kinyarwanda accents",
+      "Weatherproof LTE + solar kiosk, and a field pilot",
+    ],
+  },
+];
+
+/** Most important first: each fixes a weakness named in REALITY. */
+export const IMPROVEMENTS: readonly { what: string; why: string }[] = [
+  { what: "Grow the voice model", why: "Test on unseen voices; add speakers and Kinyarwanda accents" },
+  { what: "One-week pilot at a real stop", why: "Real waits and noise, to tune the 70% / 15 min rules" },
+  { what: "Real card reader", why: "RC522 first, then Tap&Go integration instead of demo cards" },
+  { what: "Exact seat counts", why: "Validator taps or door counters instead of ticket counts" },
+  { what: "Traffic-aware ETA", why: "Operator GPS (AVL) feeds and live traffic, not a fixed speed" },
+  { what: "Street-ready kiosk", why: "Weatherproof case, LTE, solar; native review of the Kinyarwanda" },
 ];
 
 export const FLOW_STEPS = [
@@ -237,15 +361,6 @@ export const ROADMAP_PHASES = [
   { phase: "City scale", when: "Later", detail: "Every stop a demand sensor" },
 ] as const;
 
-export const UPGRADES = [
-  "RC522 reader with real Tap&Go integration",
-  "Trained gesture model",
-  "More voices and Kinyarwanda accents",
-  "LTE kiosk with solar power",
-  "Operator GPS feeds",
-  "Camera module for hand-sign selection",
-] as const;
-
 export const CONCLUSION: readonly { label: string; text: string }[] = [
   {
     label: "Problem",
@@ -257,7 +372,7 @@ export const CONCLUSION: readonly { label: string; text: string }[] = [
   },
   {
     label: "Tech",
-    text: "On-device voice AI on an Arduino, a fair digital queue, and a live dispatch dashboard.",
+    text: "A fair digital queue, live dispatch with a human in the loop, GPS tracking, and on-device voice AI on an Arduino.",
   },
 ];
 
