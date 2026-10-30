@@ -1,6 +1,7 @@
 // The 15 pitch slides. Each renders into a fixed 1280×720 canvas that the deck
 // scales to the screen, so sizes here are real projector sizes.
 
+import Image from "next/image";
 import type { ReactNode } from "react";
 import { RouteBadge } from "@/components/RouteBadge";
 import { IdeaStoryboard } from "./IdeaStoryboard";
@@ -62,6 +63,20 @@ function Frame({ section, title, children }: { section: PitchSection; title: Rea
       <h2 className="mt-5 text-[52px] leading-[1.05]">{title}</h2>
       <div className="mt-8 min-h-0 flex-1">{children}</div>
     </div>
+  );
+}
+
+/** QR code for the public live board (public/pitch/live-qr.svg, made with `npx qrcode`). */
+function LiveQr({ size }: { size: number }) {
+  return (
+    <Image
+      src="/pitch/live-qr.svg"
+      width={size}
+      height={size}
+      unoptimized
+      alt="QR code: tap-and-select.vercel.app/live"
+      className="rounded-md border border-line bg-white p-1"
+    />
   );
 }
 
@@ -416,13 +431,13 @@ export const SLIDES: readonly Slide[] = [
       "Kiosk: tap the card reader → Test card → say “Remera” or swipe left → Confirm → ticket (it is read out loud).",
       "Dashboard: Approve the release recommendation → kiosk shows the bus and ETA.",
       "Simulate drive (or the driver's phone GPS): the bus moves on the map, then Now boarding with the ticket called out.",
-      "Invite the room to open /live on their phones. Come back with ← or Alt+Tab.",
+      "Invite the room to scan the QR code (opens /live, no sign-in) before you start. Come back with ← or Alt+Tab.",
       "Fallback: tap a stop on screen if the room is noisy.",
     ],
     body: (
       <Frame section="Tech" title="Live demo">
         <p className="text-[28px]">A passenger, a queue number, and a bus released by HQ, live.</p>
-        <div className="mt-10 grid grid-cols-3 gap-6">
+        <div className="mt-8 grid grid-cols-3 gap-6">
           <a
             href="/kiosk"
             target="_blank"
@@ -451,7 +466,7 @@ export const SLIDES: readonly Slide[] = [
             <span className="num text-[20px] text-muted">/live · no sign-in</span>
           </a>
         </div>
-        <ol className="mt-10 flex flex-wrap items-center gap-x-3 gap-y-2 text-[21px] text-muted">
+        <ol className="mt-8 flex flex-wrap items-center gap-x-3 gap-y-2 text-[21px] text-muted">
           {["Tap card", "Say “Remera” or swipe", "Confirm", "Ticket", "HQ approves", "Bus drives (GPS)", "Now boarding"].map(
             (step, i, all) => (
               <li key={step} className="flex items-center gap-3">
@@ -461,9 +476,14 @@ export const SLIDES: readonly Slide[] = [
             ),
           )}
         </ol>
-        <p className="mt-10 rounded-card border-2 border-ink bg-surface px-6 py-4 text-[26px]">
-          Follow along on your phone: <span className="num font-bold">tap-and-select.vercel.app/live</span>
-        </p>
+        <div className="mt-8 flex items-center gap-6 rounded-card border-2 border-ink bg-surface px-6 py-3">
+          <LiveQr size={120} />
+          <p className="text-[26px] leading-snug">
+            Scan to follow along on your phone
+            <span className="num block font-bold">tap-and-select.vercel.app/live</span>
+            <span className="block text-[19px] text-muted">No sign-in. Watch the queue and the bus move live.</span>
+          </p>
+        </div>
       </Frame>
     ),
   },
@@ -564,7 +584,13 @@ export const SLIDES: readonly Slide[] = [
     notes: ["Thank the judges in Kinyarwanda and English.", "Invite questions; the demo stays open for follow-ups."],
     body: (
       <div className="flex h-full flex-col justify-between px-16 py-14">
-        <HomeLink />
+        <div className="flex items-start justify-between">
+          <HomeLink />
+          <figure className="text-center">
+            <LiveQr size={130} />
+            <figcaption className="num mt-1 text-[16px] text-muted">/live</figcaption>
+          </figure>
+        </div>
         <div>
           <p className="text-[96px] font-bold leading-none font-display">Murakoze. Thank you.</p>
           <p className="mt-8 text-[44px] font-semibold text-muted">Questions?</p>
