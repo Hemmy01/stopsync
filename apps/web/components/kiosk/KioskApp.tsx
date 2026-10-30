@@ -13,6 +13,7 @@ import { useCancelReasons } from "@/lib/use-cancel-reasons";
 import { useLiveNetwork } from "@/lib/use-live-network";
 import { useRoutes } from "@/lib/use-routes";
 import { useStopName } from "@/lib/use-stop";
+import { KioskTextProvider, useKioskText } from "@/lib/use-kiosk-text";
 import { ConfirmStage } from "./ConfirmStage";
 import { ConnectBoardControl } from "./ConnectBoardControl";
 import { DebugDrawer } from "./DebugDrawer";
@@ -98,6 +99,15 @@ function BoardBanners({ supported, connection, serialError, noHello, mockMode, o
 }
 
 export function KioskApp() {
+  return (
+    <KioskTextProvider>
+      <KioskScreen />
+    </KioskTextProvider>
+  );
+}
+
+function KioskScreen() {
+  const { t } = useKioskText();
   const mockParam = useUrlFlag("mock");
   // null = follow the URL; true/false once toggled with D.
   const [drawerToggle, setDrawerToggle] = useState<boolean | null>(null);
@@ -120,7 +130,7 @@ export function KioskApp() {
     confirmCancel,
   } = useKiosk({ mockMode });
   const cancelReasons = useCancelReasons();
-  const reasonLabel = (code: string) => cancelReasons.reasons.find((r) => r.code === code)?.label ?? code;
+  const reasonLabel = (code: string) => t.reason(cancelReasons.reasons.find((r) => r.code === code) ?? { code, label: code });
   const network = useLiveNetwork();
   const { routes } = useRoutes();
   const stopName = useStopName(STOP_ID);
@@ -139,7 +149,7 @@ export function KioskApp() {
     const ticket = findTicket(network.tokens, code);
     const position = ticket ? queuePosition(network.tokens, ticket) : (positionAtCreation ?? null);
     const status = ticketStatus(ticket, destination, network.buses, position);
-    const tracked = status.kind === "on_the_way" ? trackBusFor(destination, network.buses, routes) : null;
+    const tracked = status.kind === "on_the_way" ? trackBusFor(destination, network.buses, routes, t.progress) : null;
     const below = tracked ? (
       <RouteStrip
         route={tracked.route}
@@ -153,7 +163,7 @@ export function KioskApp() {
   };
 
   return (
-    <div className="flex h-dvh flex-col overflow-hidden text-[20px]">
+    <div lang={t.htmlLang} className="flex h-dvh flex-col overflow-hidden text-[20px]">
       <KioskTopBar
         stopName={stopName}
         boardStatus={board.status}
@@ -178,8 +188,8 @@ export function KioskApp() {
         />
 
         {network.error ? (
-          <Banner tone="danger" title="Can't reach Tap&Select right now" className="mb-6">
-            {network.error} You can still tap a stop; numbers will be issued when the connection returns.
+          <Banner tone="danger" title={t.offlineTitle} className="mb-6">
+            {network.error} {t.offlineHint}
           </Banner>
         ) : null}
 
@@ -212,8 +222,8 @@ export function KioskApp() {
           {state.step === "ticket" && (
             <TicketStage
               key={state.ticket.code}
-              heading="Here's your number"
-              subheading="Watch this screen or the board below for your bus."
+              heading={t.hereIsYourNumber}
+              subheading={t.watchScreen}
               code={state.ticket.code}
               {...ticketProps(state.ticket.code, state.ticket.destination, state.ticket.position)}
               timeoutMs={STEP_TIMEOUT_MS.ticket ?? 12_000}
@@ -224,8 +234,8 @@ export function KioskApp() {
           {state.step === "duplicate" && (
             <TicketStage
               key={state.code}
-              heading="You're already in the queue"
-              subheading="One ticket per card. Here's the one you have."
+              heading={t.alreadyQueued}
+              subheading={t.oneTicketPerCard}
               code={state.code}
               {...ticketProps(state.code, state.destination)}
               timeoutMs={STEP_TIMEOUT_MS.duplicate ?? 20_000}

@@ -1,7 +1,8 @@
 import clsx from "clsx";
 import { RouteBadge } from "@/components/RouteBadge";
-import { departureLabel, departureStatus, type Bus } from "@/lib/departures";
+import { departureStatus, type Bus } from "@/lib/departures";
 import { DESTINATIONS } from "@/lib/destinations";
+import { useKioskText } from "@/lib/use-kiosk-text";
 
 interface DepartureStripProps {
   buses: readonly Bus[];
@@ -11,13 +12,14 @@ interface DepartureStripProps {
 
 /** Airport-board row: one cell per destination, always visible. */
 export function DepartureStrip({ buses, waiting, loading }: DepartureStripProps) {
+  const { t } = useKioskText();
   return (
-    <section aria-label="Live departures" className="shrink-0 border-t-2 border-ink bg-surface">
+    <section aria-label={t.liveDepartures} className="shrink-0 border-t-2 border-ink bg-surface">
       <ul className="grid grid-cols-4 divide-x divide-line">
         {DESTINATIONS.map((d) => {
           const status = departureStatus(d.code, buses);
           const count = waiting[d.code] ?? 0;
-          const label = departureLabel(status);
+          const label = t.departure(status);
           return (
             <li key={d.code} className="flex items-center gap-4 px-6 py-4">
               <RouteBadge code={d.code} size="md" />
@@ -41,7 +43,7 @@ export function DepartureStrip({ buses, waiting, loading }: DepartureStripProps)
                     {loading ? "–" : count}
                   </span>
                 </p>
-                <p className="text-sm text-muted">waiting</p>
+                <p className="text-sm text-muted">{t.waiting}</p>
               </div>
             </li>
           );

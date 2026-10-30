@@ -1,6 +1,7 @@
 import clsx from "clsx";
 import { BusFront } from "lucide-react";
 import type { BusProgress, Route } from "@/lib/routes";
+import { useKioskText } from "@/lib/use-kiosk-text";
 
 interface RouteStripProps {
   route: Route;
@@ -17,6 +18,7 @@ interface RouteStripProps {
  * the two stops it is travelling between. Passed stops are filled, upcoming ones hollow.
  */
 export function RouteStrip({ route, progress, color, busId, caption }: RouteStripProps) {
+  const { t } = useKioskText();
   const { stops } = route;
   const at = progress.stripFraction ?? 0;
   const pct = (i: number) => (stops.length > 1 ? (i / (stops.length - 1)) * 100 : 0);
@@ -61,7 +63,7 @@ export function RouteStrip({ route, progress, color, busId, caption }: RouteStri
           <span className="num text-base font-semibold">{busId}</span>
         </span>
       </div>
-      <ol className="relative mx-14 mt-1 h-10 text-sm text-muted" aria-label={`Stops on route ${route.route}`}>
+      <ol className="relative mx-14 mt-1 h-10 text-sm text-muted" aria-label={t.stopsOnRoute(route.route)}>
         {stops.map((stop, i) => {
           const kiosk = i === stops.length - 1;
           return (
@@ -74,7 +76,7 @@ export function RouteStrip({ route, progress, color, busId, caption }: RouteStri
               )}
               style={{ left: `${pct(i)}%` }}
             >
-              {kiosk ? "This stop" : stop.name}
+              {kiosk ? t.thisStop : stop.name}
             </li>
           );
         })}

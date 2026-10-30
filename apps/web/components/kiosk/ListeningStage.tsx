@@ -1,10 +1,11 @@
 import clsx from "clsx";
 import { Hand } from "lucide-react";
 import { RouteBadge } from "@/components/RouteBadge";
-import { DESTINATIONS, gestureHintFor, swipeDirection, type DestinationCode } from "@/lib/destinations";
+import { DESTINATIONS, swipeDirection, type DestinationCode } from "@/lib/destinations";
 import { STEP_TIMEOUT_MS } from "@/lib/kiosk-machine";
 import type { BoardGestureMode } from "@/lib/protocol";
 import type { LiveGesture } from "@/lib/use-kiosk";
+import { useKioskText } from "@/lib/use-kiosk-text";
 import { StepCountdown } from "./StepCountdown";
 import { SwipeArrow } from "./SwipeArrow";
 
@@ -32,6 +33,7 @@ function ListeningIndicator() {
 
 /** "Sensor saw: ← Swipe left", announced politely to screen readers. */
 function SensorFeedback({ gesture }: { gesture: LiveGesture | null }) {
+  const { t } = useKioskText();
   return (
     <p aria-live="polite" className="flex h-14 items-center">
       {gesture ? (
@@ -39,7 +41,7 @@ function SensorFeedback({ gesture }: { gesture: LiveGesture | null }) {
           key={gesture.id}
           className="inline-flex h-14 items-center gap-3 rounded-pill border border-ink bg-surface px-5 text-[22px] font-semibold animate-tick"
         >
-          <span className="font-normal text-muted">Sensor saw</span>
+          <span className="font-normal text-muted">{t.sensorSaw}</span>
           {gesture.direction ? <SwipeArrow direction={gesture.direction} className="h-7 w-7" /> : null}
           {gesture.text}
         </span>
@@ -50,8 +52,8 @@ function SensorFeedback({ gesture }: { gesture: LiveGesture | null }) {
 
 /** Step 2: the board listens; tiles are the tap fallback. */
 export function ListeningStage({ gestureMode, liveGesture, onSelect, onCancel }: ListeningStageProps) {
+  const { t } = useKioskText();
   const swipes = gestureMode === "swipe";
-  const heading = gestureMode === "off" ? "Say your stop" : swipes ? "Say your stop or swipe" : "Say your stop or tap the sensor";
 
   return (
     <div className="flex h-full flex-col">
@@ -60,16 +62,16 @@ export function ListeningStage({ gestureMode, liveGesture, onSelect, onCancel }:
           <div className="flex items-center gap-4">
             <ListeningIndicator />
             <p className="text-lg font-semibold text-accent" role="status">
-              Listening
+              {t.listening}
             </p>
           </div>
-          <h1 className="mt-3 text-[52px] leading-[1.05]">{heading}</h1>
+          <h1 className="mt-3 text-[52px] leading-[1.05]">{t.listenHeading(gestureMode)}</h1>
         </div>
-        <StepCountdown ms={STEP_TIMEOUT_MS.listening ?? 20_000} label="Cancels in" />
+        <StepCountdown ms={STEP_TIMEOUT_MS.listening ?? 20_000} label={t.cancelsIn} />
       </div>
 
       <div className="mt-auto mb-4 flex items-end justify-between gap-6">
-        <p className="text-[22px] text-muted">Tap a stop if I didn&rsquo;t catch it</p>
+        <p className="text-[22px] text-muted">{t.tapIfMissed}</p>
         {gestureMode === "off" ? null : <SensorFeedback gesture={liveGesture} />}
       </div>
       <ul className="grid grid-cols-4 gap-4">
@@ -95,10 +97,10 @@ export function ListeningStage({ gestureMode, liveGesture, onSelect, onCancel }:
                 </span>
                 <span>
                   <span className="block font-display text-[32px] font-semibold leading-tight">{d.name}</span>
-                  <span className="mt-1 block text-lg leading-snug text-muted">Say &ldquo;{d.name}&rdquo;</span>
+                  <span className="mt-1 block text-lg leading-snug text-muted">{t.say(d.name)}</span>
                   {gestureMode === "off" ? null : (
                     <span className={clsx("block text-lg leading-snug", swipes ? "font-semibold text-ink" : "text-muted")}>
-                      {gestureHintFor(d, gestureMode)}
+                      {t.gestureHint(d.code, gestureMode)}
                     </span>
                   )}
                 </span>
@@ -114,7 +116,7 @@ export function ListeningStage({ gestureMode, liveGesture, onSelect, onCancel }:
           onClick={onCancel}
           className="h-14 rounded-card border border-line px-6 font-semibold text-ink transition-colors duration-200 ease-out hover:border-ink"
         >
-          Cancel
+          {t.cancel}
         </button>
       </div>
     </div>
