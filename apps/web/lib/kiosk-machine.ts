@@ -28,7 +28,12 @@ export type KioskState =
   | { step: "confirm"; cardId: string; selection: Selection; error?: string }
   | { step: "submitting"; cardId: string; selection: Selection }
   | { step: "ticket"; cardId: string; ticket: Ticket }
-  | { step: "duplicate"; cardId: string; code: string; destination: string };
+  | { step: "duplicate"; cardId: string; code: string; destination: string }
+  /** The passenger with a waiting ticket chose "Cancel my place": pick a reason. */
+  | { step: "cancel_reason"; cardId: string; code: string; destination: string }
+  | { step: "cancel_confirm"; cardId: string; code: string; destination: string; reason: string; error?: string }
+  | { step: "cancelling"; cardId: string; code: string; destination: string; reason: string }
+  | { step: "cancelled"; cardId: string; code: string; destination: string; reason: string };
 
 export type KioskStep = KioskState["step"];
 
@@ -43,6 +48,12 @@ export type KioskEvent =
   | { type: "TOKEN_CREATED"; ticket: Ticket }
   | { type: "TOKEN_DUPLICATE"; code: string; destination: string }
   | { type: "TOKEN_FAILED"; message: string }
+  | { type: "CANCEL_PLACE" }
+  | { type: "REASON_CHOSEN"; reason: string }
+  | { type: "KEEP_PLACE" }
+  | { type: "CANCEL_CONFIRMED" }
+  | { type: "PLACE_CANCELLED" }
+  | { type: "CANCEL_FAILED"; message: string }
   | { type: "TIMEOUT" }
   | { type: "CANCEL" };
 
@@ -53,7 +64,11 @@ export const STEP_TIMEOUT_MS: Partial<Record<KioskStep, number>> = {
   listening: 20_000,
   confirm: 15_000,
   ticket: 12_000,
-  duplicate: 12_000,
+  // Long enough to read the ticket and decide whether to give up the place.
+  duplicate: 20_000,
+  cancel_reason: 20_000,
+  cancel_confirm: 15_000,
+  cancelled: 8_000,
 };
 
 /** How long the detected gesture stays on screen before the confirm step (ms). */
@@ -129,12 +144,35 @@ export function kioskReducer(state: KioskState, event: KioskEvent): KioskState {
         ? { step: "confirm", cardId: state.cardId, selection: state.selection, error: event.message }
         : state;
 
+    case "CANCEL_PLACE":
+      return state.step === "duplicate" ? { ...state, step: "cancel_reason" } : state;
+
+    case "REASON_CHOSEN":
+      return state.step === "cancel_reason" ? { ...state, step: "cancel_confirm", reason: event.reason } : state;
+
+    case "KEEP_PLACE":
+      // Back to the ticket: nothing changed.
+      return state.step === "cancel_reason" || state.step === "cancel_confirm"
+        ? { step: "duplicate", cardId: state.cardId, code: state.code, destination: state.destination }
+        : state;
+
+    case "CANCEL_CONFIRMED":
+      return state.step === "cancel_confirm"
+        ? { step: "cancelling", cardId: state.cardId, code: state.code, destination: state.destination, reason: state.reason }
+        : state;
+
+    case "PLACE_CANCELLED":
+      return state.step === "cancelling" ? { ...state, step: "cancelled" } : state;
+
+    case "CANCEL_FAILED":
+      return state.step === "cancelling" ? { ...state, step: "cancel_confirm", error: event.message } : state;
+
     case "TIMEOUT":
       return STEP_TIMEOUT_MS[state.step] !== undefined ? initialKioskState : state;
 
     case "CANCEL":
       // Never abandon an in-flight request: its result decides the next step.
-      return state.step === "submitting" ? state : initialKioskState;
+      return state.step === "submitting" || state.step === "cancelling" ? state : initialKioskState;
   }
 }
 
@@ -159,6 +197,10 @@ export function transitionEffects(prev: KioskState, event: KioskEvent, next: Kio
       return { commands: [{ type: "START" }] };
 
     case "CARD_ALREADY_QUEUED":
+      return { commands: [{ type: "CANCEL" }] };
+
+    case "PLACE_CANCELLED":
+      // The board is already idle after CARD_ALREADY_QUEUED; this makes sure it shows nothing pending.
       return { commands: [{ type: "CANCEL" }] };
 
     case "CHANGE":

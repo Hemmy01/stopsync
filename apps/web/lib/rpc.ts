@@ -62,6 +62,26 @@ export async function createToken(
   return parseCreateTokenResult(data);
 }
 
+export type CancelTokenResult =
+  | { status: "cancelled"; code: string }
+  | { status: "error"; message: string };
+
+export function parseCancelTokenResult(data: Json | null): CancelTokenResult {
+  const o = asObject(data);
+  const code = o && str(o, "code");
+  if (o?.status === "cancelled" && code) return { status: "cancelled", code };
+  if (o?.status === "not_found") {
+    return { status: "error", message: "This ticket is no longer in the queue. It may have just boarded." };
+  }
+  return { status: "error", message: (o && str(o, "message")) ?? "Unexpected response from the server" };
+}
+
+export async function cancelToken(client: StopSyncClient, cardId: string, reason: string): Promise<CancelTokenResult> {
+  const { data, error } = await client.rpc("cancel_token", { p_card: cardId, p_reason: reason });
+  if (error) return { status: "error", message: error.message };
+  return parseCancelTokenResult(data);
+}
+
 /** The card's current waiting ticket, if any. */
 export async function findWaitingToken(
   client: StopSyncClient,

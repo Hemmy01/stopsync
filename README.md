@@ -150,7 +150,7 @@ Everything in the database comes from `supabase/migrations/` and `supabase/seed.
 
 Functions: `create_token`, `run_dispatch` (every minute via **pg_cron**), `approve_decision`,
 `dismiss_decision`, `update_bus_location`, `mark_bus_arrived`, `complete_trip`, `adjust_occupancy`,
-`reset_bus`, `log_selection`, `reset_demo` (and the internal `board_queue`, `release_for_decision`).
+`reset_bus`, `log_selection`, `reset_demo`, `cancel_token` (and the internal `board_queue`, `release_for_decision`).
 
 **Live tracking.** Each GPS fix from `/bus` (`update_bus_location`) is stored in `bus_positions`, then
 projected onto the bus's route: that gives the last stop passed, the next stop, stops remaining
@@ -197,6 +197,13 @@ serves. **Auto-dispatch** (`auto_dispatch` = 1 in Settings, off by default) lets
 release a bus by itself when load ≥ `release_load_pct`, at most `max_auto_releases_per_hour` per
 route; past the limit the recommendation waits for HQ as usual.
 
+**Cancelling a place.** Tapping a card that already has a waiting ticket shows the ticket, the
+live bus progress and **Cancel my place** → a reason (big tiles, from the `cancel_reasons` table)
+→ **Yes, cancel my place**. `cancel_token(card, reason)` marks the ticket `cancelled` with its
+reason and time, the people behind move up, and the kiosk sends `CANCEL` to the board. A boarded
+ticket can't be cancelled. The dashboard shows **Why people left (today)** and the cancellation
+rate (cancelled today ÷ tickets issued or cancelled today).
+
 ### SQL scenario tests
 
 ```zsh
@@ -206,7 +213,7 @@ supabase/tests/run.sh --with supabase/migrations/<new>.sql    # try a migration 
 
 Each test runs inside a transaction against the linked project and **always rolls back**, so it is
 safe on the real database. `fifo_queue_test.sql` checks 27 boarding, dispatch and auto-dispatch
-scenarios; a failure prints the check's name and exits non-zero. (pgTAP needs a local Docker
+scenarios and `cancel_token_test.sql` 9 cancellation ones; a failure prints the check's name and exits non-zero. (pgTAP needs a local Docker
 database, which this setup doesn't use.)
 
 ### Changing the schema (Danny)

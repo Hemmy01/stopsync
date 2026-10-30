@@ -14,7 +14,7 @@ import {
   type KioskState,
 } from "./kiosk-machine";
 import { parseBoardModes, parseGestureLog, type BoardGestureMode, type BoardMessage, type KioskCommand } from "./protocol";
-import { createToken, findWaitingToken, logSelection } from "./rpc";
+import { cancelToken, createToken, findWaitingToken, logSelection } from "./rpc";
 import { getSupabase, STOP_ID } from "./supabase";
 import { useBoard } from "./use-board";
 
@@ -182,6 +182,25 @@ export function useKiosk({ mockMode }: { mockMode: boolean }) {
     }
   }, [transition]);
 
+  const confirmCancel = useCallback(async () => {
+    const current = stateRef.current;
+    if (current.step !== "cancel_confirm" || busy.current) return;
+    busy.current = true;
+    transition({ type: "CANCEL_CONFIRMED" });
+
+    let result: Awaited<ReturnType<typeof cancelToken>>;
+    try {
+      result = await cancelToken(getSupabase(), current.cardId, current.reason);
+    } catch (err) {
+      result = { status: "error", message: err instanceof Error ? err.message : "Network error" };
+    }
+    busy.current = false;
+    transition(result.status === "cancelled" ? { type: "PLACE_CANCELLED" } : { type: "CANCEL_FAILED", message: result.message });
+  }, [transition]);
+
+  const startCancel = useCallback(() => transition({ type: "CANCEL_PLACE" }), [transition]);
+  const chooseReason = useCallback((reason: string) => transition({ type: "REASON_CHOSEN", reason }), [transition]);
+  const keepPlace = useCallback(() => transition({ type: "KEEP_PLACE" }), [transition]);
   const change = useCallback(() => transition({ type: "CHANGE" }), [transition]);
   const cancel = useCallback(() => transition({ type: "CANCEL" }), [transition]);
 
@@ -195,5 +214,9 @@ export function useKiosk({ mockMode }: { mockMode: boolean }) {
     confirm,
     change,
     cancel,
+    startCancel,
+    chooseReason,
+    keepPlace,
+    confirmCancel,
   };
 }

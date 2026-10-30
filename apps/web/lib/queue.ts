@@ -83,7 +83,9 @@ export function ticketStatus(
     return { kind: "called", line: "Your bus is here, please board", busId: ticket.bus_id };
   }
   if (ticket && ticket.status !== "waiting") {
-    return { kind: "done", line: ticket.status === "completed" ? "Trip completed" : "Ticket no longer valid" };
+    const line =
+      ticket.status === "completed" ? "Trip completed" : ticket.status === "cancelled" ? "Place cancelled" : "Ticket no longer valid";
+    return { kind: "done", line };
   }
 
   const route = departureStatus(destination, buses);

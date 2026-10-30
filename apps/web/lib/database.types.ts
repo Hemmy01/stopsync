@@ -182,6 +182,24 @@ export type Database = {
           },
         ]
       }
+      cancel_reasons: {
+        Row: {
+          code: string
+          label: string
+          sort_order: number
+        }
+        Insert: {
+          code: string
+          label: string
+          sort_order?: number
+        }
+        Update: {
+          code?: string
+          label?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
       config: {
         Row: {
           description: string | null
@@ -284,6 +302,8 @@ export type Database = {
         Row: {
           boarded_at: string | null
           bus_id: string | null
+          cancel_reason: string | null
+          cancelled_at: string | null
           card_id: string | null
           code: string
           completed_at: string | null
@@ -298,6 +318,8 @@ export type Database = {
         Insert: {
           boarded_at?: string | null
           bus_id?: string | null
+          cancel_reason?: string | null
+          cancelled_at?: string | null
           card_id?: string | null
           code: string
           completed_at?: string | null
@@ -312,6 +334,8 @@ export type Database = {
         Update: {
           boarded_at?: string | null
           bus_id?: string | null
+          cancel_reason?: string | null
+          cancelled_at?: string | null
           card_id?: string | null
           code?: string
           completed_at?: string | null
@@ -330,6 +354,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "buses"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "queue_tokens_cancel_reason_fkey"
+            columns: ["cancel_reason"]
+            isOneToOne: false
+            referencedRelation: "cancel_reasons"
+            referencedColumns: ["code"]
           },
           {
             foreignKeyName: "queue_tokens_destination_fkey"
@@ -508,6 +539,10 @@ export type Database = {
       bus_free_places: {
         Args: { b: Database["public"]["Tables"]["buses"]["Row"] }
         Returns: number
+      }
+      cancel_token: {
+        Args: { p_card: string; p_reason: string }
+        Returns: Json
       }
       complete_trip: {
         Args: { p_bus: string; p_source?: string }

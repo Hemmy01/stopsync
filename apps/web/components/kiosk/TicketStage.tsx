@@ -14,15 +14,28 @@ interface TicketStageProps {
   onDone: () => void;
   /** Shown under the ticket, e.g. the route strip while the bus is on the way. */
   below?: ReactNode;
+  /** Offered when the ticket is still waiting: the passenger can give up their place. */
+  onCancelPlace?: () => void;
 }
 
 /** Steps 4 and 5: a new ticket, or the card's existing one. */
-export function TicketStage({ heading, subheading, timeoutMs, onDone, below, ...ticket }: TicketStageProps) {
+export function TicketStage({ heading, subheading, timeoutMs, onDone, below, onCancelPlace, ...ticket }: TicketStageProps) {
   return (
     <div className="flex h-full flex-col">
-      <div className="mb-6">
-        <h1 className="text-[44px] leading-[1.05]">{heading}</h1>
-        {subheading && !below ? <p className="mt-2 text-[22px] text-muted">{subheading}</p> : null}
+      <div className="mb-6 flex items-start justify-between gap-8">
+        <div>
+          <h1 className="text-[44px] leading-[1.05]">{heading}</h1>
+          {subheading && !below ? <p className="mt-2 text-[22px] text-muted">{subheading}</p> : null}
+        </div>
+        {onCancelPlace ? (
+          <button
+            type="button"
+            onClick={onCancelPlace}
+            className="h-14 shrink-0 rounded-card border border-line bg-surface px-6 font-semibold text-danger transition-colors duration-200 ease-out hover:border-danger"
+          >
+            Cancel my place
+          </button>
+        ) : null}
       </div>
 
       <TicketCard {...ticket} compact={Boolean(below)} />

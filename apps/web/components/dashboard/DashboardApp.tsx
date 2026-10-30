@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { Banner } from "@/components/Banner";
+import { cancellationStats } from "@/lib/cancel-reasons";
 import {
   buildActivity,
   computeTotals,
@@ -32,6 +33,7 @@ import { ActivityFeed } from "./ActivityFeed";
 import { DashboardHeader } from "./DashboardHeader";
 import { DestinationCard, type CardActions } from "./DestinationCard";
 import { LiveMap } from "./LiveMap";
+import { CancelReasons } from "./CancelReasons";
 import { MethodBreakdown } from "./MethodBreakdown";
 import { ModelInsights } from "./ModelInsights";
 import { SettingsPanel } from "./SettingsPanel";
@@ -79,7 +81,9 @@ export function DashboardApp() {
         data.buses,
         40,
         (id) => stopNames.get(id) ?? id,
+        (code) => data.cancelReasons.find((r) => r.code === code)?.label ?? code,
       ),
+      cancellations: cancellationStats(data.tokens, data.cancelReasons, data.dayStart),
       releaseLoadPct: configValue(data.config, "release_load_pct", 70),
     };
   }, [data, stopNames]);
@@ -159,6 +163,7 @@ export function DashboardApp() {
             <ActivityFeed items={derived.activity} />
             <div className="space-y-6">
               <MethodBreakdown total={derived.methods.total} shares={derived.methods.shares} />
+              <CancelReasons stats={derived.cancellations} />
               <ModelInsights rows={derived.insights} />
               <SettingsPanel
                 rows={data.config}

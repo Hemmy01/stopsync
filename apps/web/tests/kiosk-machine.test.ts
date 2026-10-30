@@ -266,3 +266,58 @@ describe("transitionEffects", () => {
     expect(run(confirmState, { type: "CARD_CLEAR" })).toEqual({ commands: [] });
   });
 });
+
+describe("kioskReducer: cancel my place", () => {
+  const queued = (): KioskState =>
+    run({ type: "CARD_TAPPED", cardId: "CARD-02" }, { type: "CARD_ALREADY_QUEUED", code: "R2-006", destination: "REM" });
+  const steps = (...events: KioskEvent[]) => events.reduce(kioskReducer, queued());
+
+  it("goes ticket → reasons → confirm → cancelling → cancelled", () => {
+    expect(steps({ type: "CANCEL_PLACE" })).toMatchObject({ step: "cancel_reason", code: "R2-006" });
+    expect(steps({ type: "CANCEL_PLACE" }, { type: "REASON_CHOSEN", reason: "waited_too_long" })).toMatchObject({
+      step: "cancel_confirm",
+      reason: "waited_too_long",
+    });
+    const done = steps(
+      { type: "CANCEL_PLACE" },
+      { type: "REASON_CHOSEN", reason: "other_transport" },
+      { type: "CANCEL_CONFIRMED" },
+      { type: "PLACE_CANCELLED" },
+    );
+    expect(done).toEqual({ step: "cancelled", cardId: "CARD-02", code: "R2-006", destination: "REM", reason: "other_transport" });
+  });
+
+  it("Keep my place returns to the ticket from either screen", () => {
+    expect(steps({ type: "CANCEL_PLACE" }, { type: "KEEP_PLACE" })).toEqual(queued());
+    expect(
+      steps({ type: "CANCEL_PLACE" }, { type: "REASON_CHOSEN", reason: "other" }, { type: "KEEP_PLACE" }),
+    ).toEqual(queued());
+  });
+
+  it("a failed cancel goes back to the confirm screen with the message", () => {
+    const state = steps(
+      { type: "CANCEL_PLACE" },
+      { type: "REASON_CHOSEN", reason: "other" },
+      { type: "CANCEL_CONFIRMED" },
+      { type: "CANCEL_FAILED", message: "It may have just boarded." },
+    );
+    expect(state).toMatchObject({ step: "cancel_confirm", error: "It may have just boarded." });
+  });
+
+  it("never abandons an in-flight cancel, and only offers it on a queued ticket", () => {
+    const cancelling = steps({ type: "CANCEL_PLACE" }, { type: "REASON_CHOSEN", reason: "other" }, { type: "CANCEL_CONFIRMED" });
+    expect(kioskReducer(cancelling, { type: "CANCEL" })).toBe(cancelling);
+    expect(kioskReducer(cancelling, { type: "TIMEOUT" })).toBe(cancelling);
+    expect(kioskReducer(initialKioskState, { type: "CANCEL_PLACE" })).toBe(initialKioskState);
+  });
+
+  it("timing out on the reasons or confirm screen keeps the place (back to start, no RPC)", () => {
+    expect(kioskReducer(steps({ type: "CANCEL_PLACE" }), { type: "TIMEOUT" })).toEqual(initialKioskState);
+  });
+
+  it("sends CANCEL to the board once the place is cancelled", () => {
+    const prev = steps({ type: "CANCEL_PLACE" }, { type: "REASON_CHOSEN", reason: "other" }, { type: "CANCEL_CONFIRMED" });
+    const event: KioskEvent = { type: "PLACE_CANCELLED" };
+    expect(transitionEffects(prev, event, kioskReducer(prev, event))).toEqual({ commands: [{ type: "CANCEL" }] });
+  });
+});
