@@ -1,5 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { canAdminister, canDispatch, canOpen, demoEmail, HOME_FOR, isRole, PAGE_ROLES, ROLES, safeNext } from "@/lib/auth";
+import {
+  canAdminister,
+  canDispatch,
+  canOpen,
+  demoEmail,
+  demoRoles,
+  HOME_FOR,
+  isRole,
+  PAGE_ROLES,
+  ROLES,
+  safeNext,
+  signInErrorMessage,
+} from "@/lib/auth";
 
 describe("canOpen", () => {
   it("matches the brief: kiosk, dashboard (incl. viewer), bus for drivers, users for admins", () => {
@@ -47,5 +59,21 @@ describe("roles", () => {
     expect(isRole("driver")).toBe(true);
     expect(isRole("superuser")).toBe(false);
     expect(demoEmail("kiosk")).toBe("kiosk@tapselect.demo");
+  });
+});
+
+describe("demoRoles", () => {
+  it("leaves admin out unless it is listed", () => {
+    expect(demoRoles(undefined)).toEqual(["kiosk", "dispatcher", "driver", "viewer"]);
+    expect(demoRoles("")).not.toContain("admin");
+    expect(demoRoles("admin, Kiosk ,nonsense")).toEqual(["admin", "kiosk"]);
+  });
+});
+
+describe("signInErrorMessage", () => {
+  it("explains Supabase's sign-in limit and passes other messages through", () => {
+    expect(signInErrorMessage("Request rate limit reached")).toMatch(/Too many sign-ins/);
+    expect(signInErrorMessage("whatever", 429)).toMatch(/Live board/);
+    expect(signInErrorMessage("Invalid login credentials")).toBe("Invalid login credentials");
   });
 });

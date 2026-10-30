@@ -59,5 +59,26 @@ export function safeNext(next: string | null): string | null {
   return next;
 }
 
-export const DEMO_ROLES: readonly Role[] = ROLES;
+/** Demo logins offered when NEXT_PUBLIC_DEMO_ROLES isn't set: everyone but admin. */
+export const DEFAULT_DEMO_ROLES: readonly Role[] = ["kiosk", "dispatcher", "driver", "viewer"];
+
+/**
+ * Which "Demo login as…" roles to offer, from a comma list like "kiosk,dispatcher,admin".
+ * Admin is only offered when listed, so a deployed demo doesn't hand out admin by default.
+ * Unknown names are ignored; the order follows ROLES.
+ */
+export function demoRoles(setting: string | undefined): Role[] {
+  if (!setting || setting.trim() === "") return [...DEFAULT_DEMO_ROLES];
+  const wanted = new Set(setting.split(",").map((r) => r.trim().toLowerCase()));
+  return ROLES.filter((r) => wanted.has(r));
+}
+
 export const demoEmail = (role: Role) => `${role}@tapselect.demo`;
+
+/** A friendlier message for Supabase Auth's per-network sign-in limit. */
+export function signInErrorMessage(message: string, status?: number): string {
+  if (status === 429 || /rate limit|too many/i.test(message)) {
+    return "Too many sign-ins from this network in the last few minutes. Wait a minute and try again. (The Live board at /live needs no sign-in.)";
+  }
+  return message;
+}
