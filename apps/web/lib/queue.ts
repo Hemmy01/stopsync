@@ -37,6 +37,8 @@ export interface Boarding {
   count: number;
   firstCode: string;
   lastCode: string;
+  /** Every ticket called, in boarding order. */
+  codes: readonly string[];
 }
 
 /** Buses at this stop and the tickets they called here, in boarding order. */
@@ -53,6 +55,7 @@ export function boardingNow(buses: readonly Bus[], tokens: readonly QueueToken[]
           count: called.length,
           firstCode: called[0].code,
           lastCode: called[called.length - 1].code,
+          codes: called.map((t) => t.code),
         },
       ];
     });

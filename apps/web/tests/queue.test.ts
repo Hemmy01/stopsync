@@ -71,7 +71,16 @@ describe("boardingNow", () => {
       tok("R2-013"),
     ];
     const result = boardingNow([bus("R2-01", "arrived"), bus("R2-02", "on_the_way")], tokens);
-    expect(result).toEqual([{ busId: "R2-01", destination: "REM", count: 3, firstCode: "R2-010", lastCode: "R2-012" }]);
+    expect(result).toEqual([
+      {
+        busId: "R2-01",
+        destination: "REM",
+        count: 3,
+        firstCode: "R2-010",
+        lastCode: "R2-012",
+        codes: ["R2-010", "R2-011", "R2-012"],
+      },
+    ]);
     expect(ticketRange(result[0])).toBe("R2-010–R2-012");
     expect(ticketRange({ firstCode: "R2-010", lastCode: "R2-010" })).toBe("R2-010");
   });
