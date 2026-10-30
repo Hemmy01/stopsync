@@ -3,6 +3,7 @@
 
 import type { ReactNode } from "react";
 import { RouteBadge } from "@/components/RouteBadge";
+import { JourneyComic } from "./JourneyComic";
 import { HomeLink } from "@/components/HomeLink";
 import { DESTINATIONS } from "@/lib/destinations";
 import { formatAccuracy, MODELS } from "@/lib/models";
@@ -16,7 +17,6 @@ import {
   IMPROVEMENTS,
   REALITY,
   RealityBadge,
-  FLOW_STEPS,
   REFERENCES,
   ReferenceLine,
   ROADMAP_PHASES,
@@ -244,30 +244,14 @@ export const SLIDES: readonly Slide[] = [
     section: "Tech",
     speaker: "Emmanuel",
     notes: [
-      "Walk the five steps. In the prototype the card reader is simulated on screen; the voice and swipes are real.",
+      "Walk the comic left to right: one passenger, five steps. The drawings explain the idea; the live demo shows the real thing.",
+      "In the prototype the card reader is simulated on screen; the voice and swipes are real. SELECT,REM is the actual line the board sends.",
       "Recognition happens on the Arduino itself, not in the cloud.",
       "The browser is only a gateway; the rules live in the cloud database.",
     ],
     body: (
       <Frame section="Tech" title="How it works">
-        <ol className="grid grid-cols-5 gap-3">
-          {FLOW_STEPS.map((s, i) => (
-            <li key={s.n} className="relative">
-              <div className="h-full rounded-card border border-line bg-surface p-5">
-                <span className="num flex h-11 w-11 items-center justify-center rounded-full bg-ink text-[22px] font-bold text-paper">
-                  {s.n}
-                </span>
-                <h3 className="mt-4 text-[24px] leading-tight">{s.title}</h3>
-                <p className="mt-2 text-[19px] leading-snug text-muted">{s.detail}</p>
-              </div>
-              {i < FLOW_STEPS.length - 1 ? (
-                <span aria-hidden className="absolute top-1/2 -right-3 z-10 -translate-y-1/2 text-[24px] font-bold">
-                  →
-                </span>
-              ) : null}
-            </li>
-          ))}
-        </ol>
+        <JourneyComic />
         <dl className="mt-8 grid grid-cols-3 divide-x divide-line rounded-card border border-line bg-surface">
           {WHAT_RUNS_WHERE.map((w) => (
             <div key={w.place} className="p-5">
