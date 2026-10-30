@@ -1,16 +1,11 @@
-import { ArrowRight } from "lucide-react";
 import Link from "next/link";
+import { HomeAccount } from "@/components/auth/HomeAccount";
+import { HomeScreens } from "@/components/HomeScreens";
 import { KigaliClock } from "@/components/KigaliClock";
 import { RouteBadge } from "@/components/RouteBadge";
 import { Wordmark } from "@/components/Wordmark";
 import { DESTINATIONS } from "@/lib/destinations";
 
-const SCREENS = [
-  { href: "/kiosk", label: "Kiosk", detail: "Passenger screen at the stop" },
-  { href: "/dashboard", label: "Dashboard", detail: "HQ demand and dispatch" },
-  { href: "/bus", label: "Bus", detail: "Driver phone, shares GPS" },
-  { href: "/live", label: "Live board", detail: "Follow along on your phone, no sign-in" },
-] as const;
 
 export default function HomePage() {
   return (
@@ -18,9 +13,7 @@ export default function HomePage() {
       <header className="flex items-center justify-between border-b border-line pb-6">
         <Wordmark />
         <div className="flex items-center gap-6">
-          <Link href="/login" className="font-semibold underline underline-offset-4">
-            Sign in
-          </Link>
+          <HomeAccount />
           <div className="text-right">
             <KigaliClock className="block text-2xl font-medium" />
             <span className="text-sm text-muted">Kigali</span>
@@ -42,27 +35,7 @@ export default function HomePage() {
           <span>Screen</span>
           <span>Go</span>
         </div>
-        <ul>
-          {SCREENS.map((screen, i) => (
-            <li key={screen.href} className="border-b border-line">
-              <Link
-                href={screen.href}
-                className="group flex min-h-[72px] items-center gap-4 px-1 py-4 transition-colors duration-200 ease-out hover:bg-surface sm:gap-6"
-              >
-                <span className="num w-8 text-muted">{String(i + 1).padStart(2, "0")}</span>
-                <span className="flex-1">
-                  <span className="block font-display text-2xl font-semibold">{screen.label}</span>
-                  <span className="block text-muted">{screen.detail}</span>
-                </span>
-                <span className="num hidden text-muted sm:inline">{screen.href}</span>
-                <ArrowRight
-                  aria-hidden
-                  className="h-6 w-6 transition-transform duration-200 ease-out group-hover:translate-x-1"
-                />
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <HomeScreens />
       </nav>
 
       <footer className="mt-auto pt-16">
