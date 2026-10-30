@@ -14,7 +14,7 @@ Start clean: sign in as **Admin**, open **Dashboard**, press **Reset demo** and 
 
 - [ ] Signed out, open `/dashboard`: you are sent to the login page.
 - [ ] **Demo login → Viewer**: the dashboard opens read-only (no Approve, no Settings edits).
-- [ ] Person icon → the menu lists only Dashboard, Live board and About. On the home page, Kiosk and Bus show a lock.
+- [ ] Person icon → the menu lists only Dashboard and About. On the home page, Kiosk and Bus show a lock.
 - [ ] Person icon → **Sign out or switch account** → **Admin**: same dashboard, now with every button and a **Users** link.
 - [ ] **Users** (admin only): change someone's role and see it take effect.
 
@@ -56,7 +56,7 @@ On the laptop, as Admin or Dispatcher, approve a recommendation first and note w
 
 ## 5. Live board for the audience (1 min)
 
-- [ ] On any phone, **without signing in**, open `/live`: departures, queue counts, Now boarding and the map, refreshing every few seconds.
+- [ ] On any phone, **without signing in**, scan the QR on pitch slide 12 (or open `/live`): departures, queue counts, Now boarding and the map, refreshing every few seconds.
 
 ## 6. Pitch and About (2 min)
 

@@ -214,7 +214,7 @@ moves along its real route from the terminal to the kiosk in about a minute (one
 through `simulate_bus_position` (dispatcher or admin, only for a bus on the way), which runs the same
 `update_bus_location` logic as a phone. Departure, boarding at stops along the route, the kiosk's
 route strip, ETA and arrival all happen as with real GPS (events are logged as GPS). It runs in that
-browser tab and keeps going while you switch to the kiosk, live board or any other page in the app
+browser tab and keeps going while you switch to the kiosk or any other page in the app
 (use the in-app links, not the address bar); closing or reloading the tab, or **Stop simulated drive**,
 leaves the bus where it is.
 
