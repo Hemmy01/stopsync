@@ -6,7 +6,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Banner } from "@/components/Banner";
 import { Button } from "@/components/Button";
 import { HomeLink } from "@/components/HomeLink";
-import { demoRoles, HOME_FOR, isRole, ROLE_LABEL, safeNext, signInErrorMessage, type Role } from "@/lib/auth";
+import { afterSignIn, demoRoles, isRole, ROLE_LABEL, safeNext, signInErrorMessage, type Role } from "@/lib/auth";
 import { getSupabase } from "@/lib/supabase";
 import { signOut, useAccountState } from "@/lib/use-account";
 
@@ -48,7 +48,7 @@ export function LoginScreen() {
     read();
   }, []);
 
-  const go = (role: Role) => router.replace(next ?? HOME_FOR[role]);
+  const go = (role: Role) => router.replace(afterSignIn(role, next));
 
   const roleOf = async (userId: string): Promise<Role> => {
     const { data } = await getSupabase().from("profiles").select("role").eq("id", userId).maybeSingle();
