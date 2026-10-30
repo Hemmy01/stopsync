@@ -301,11 +301,16 @@ confirm**, same password for all five:
 |---|---|
 | `admin@tapselect.demo` | admin |
 | `dispatcher@tapselect.demo` | dispatcher |
-| `driver@tapselect.demo` | driver of `R2-01` |
+| `driver@tapselect.demo` | driver (starts on `R2-01`; picks another bus on `/bus`) |
 | `kiosk@tapselect.demo` | kiosk (also used by the simulator) |
 | `viewer@tapselect.demo` | viewer |
 
-They get their roles automatically on creation. Put that password in `DEMO_PASSWORD` and set
+They get their roles automatically on creation.
+
+**Drivers pick their bus per shift.** On `/bus` a driver taps **Change bus** and picks any bus no
+other driver holds (`choose_my_bus`; taken buses are greyed out via `taken_buses`). The database
+then accepts that driver's GPS, seat corrections and arrival only for that bus. Changing bus stops
+sharing location for the old one first. Admins can still assign a driver's bus on **Users**. Put that password in `DEMO_PASSWORD` and set
 `NEXT_PUBLIC_DEMO_MODE=true` to show **Demo login as…** on `/login`; the panel signs in through
 `/api/demo-login` on the server, so the password never reaches the browser.
 `NEXT_PUBLIC_DEMO_ROLES` picks the buttons (enforced by the server route too): unset means kiosk,
