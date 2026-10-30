@@ -5,21 +5,21 @@ import { FLOW_STEPS } from "./content";
 // A five-panel comic of one passenger's journey, drawn in the signage style (ink outlines,
 // paper, route colours only where they mean a route). Illustrations, not photos of hardware.
 
-const INK = "var(--ink)";
-const PAPER = "var(--paper)";
-const SURFACE = "var(--surface)";
-const R2 = "var(--route-2)";
-const SKIN = "#8a5a3c";
+export const INK = "var(--ink)";
+export const PAPER = "var(--paper)";
+export const SURFACE = "var(--surface)";
+export const R2 = "var(--route-2)";
+export const SKIN = "#8a5a3c";
 const SHIRT = "var(--muted)";
-const MONO = { fontFamily: "var(--font-mono)" } as const;
-const SANS = { fontFamily: "var(--font-sans)", fontWeight: 700 } as const;
+export const MONO = { fontFamily: "var(--font-mono)" } as const;
+export const SANS = { fontFamily: "var(--font-sans)", fontWeight: 700 } as const;
 
-function Ground() {
+export function Ground() {
   return <line x1="8" y1="186" x2="232" y2="186" stroke="var(--line)" strokeWidth="3" strokeLinecap="round" />;
 }
 
 /** A commuter standing at x, reaching toward `hand`. */
-function Person({ x, hand, children }: { x: number; hand: [number, number]; children?: ReactNode }) {
+export function Person({ x, hand, children }: { x: number; hand: [number, number]; children?: ReactNode }) {
   const [hx, hy] = hand;
   return (
     <g>
@@ -37,7 +37,7 @@ function Person({ x, hand, children }: { x: number; hand: [number, number]; chil
 }
 
 /** The stop kiosk: small screen, the sensor window you swipe over, the card pad. */
-function Kiosk({ screen }: { screen: ReactNode }) {
+export function Kiosk({ screen }: { screen: ReactNode }) {
   return (
     <g>
       <rect x="165" y="150" width="14" height="36" fill={INK} />
