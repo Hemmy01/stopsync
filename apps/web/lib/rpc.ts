@@ -100,7 +100,7 @@ export async function findWaitingToken(
 /** Outcome of an action RPC: ok, or a message the screen can show. */
 export type ActionResult = { ok: true; data: JsonObject } | { ok: false; message: string };
 
-const FAILED_STATUSES = new Set(["error", "no_bus"]);
+const FAILED_STATUSES = new Set(["error", "no_bus", "taken"]);
 
 export function parseActionResult(data: Json | null): ActionResult {
   const o = asObject(data);
@@ -122,6 +122,16 @@ async function action(
 export const approveDecision = (c: StopSyncClient, id: number) => action(c.rpc("approve_decision", { p_decision: id }));
 export const dismissDecision = (c: StopSyncClient, id: number) => action(c.rpc("dismiss_decision", { p_decision: id }));
 export const resetBus = (c: StopSyncClient, busId: string) => action(c.rpc("reset_bus", { p_bus: busId }));
+/** Driver: link this account to the bus they drive this shift ("taken" if another driver has it). */
+export const chooseMyBus = (c: StopSyncClient, busId: string) => action(c.rpc("choose_my_bus", { p_bus: busId }));
+
+/** Buses linked to another driver. */
+export async function loadTakenBuses(c: StopSyncClient): Promise<string[]> {
+  const { data, error } = await c.rpc("taken_buses");
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
 /** Dispatcher: one step of a simulated drive (same effects as the bus's GPS). */
 export const simulateBusPosition = (c: StopSyncClient, busId: string, at: { lat: number; lng: number }) =>
   action(c.rpc("simulate_bus_position", { p_bus: busId, p_lat: at.lat, p_lng: at.lng }));

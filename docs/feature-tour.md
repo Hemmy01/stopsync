@@ -43,8 +43,11 @@ Admin or Dispatcher → **Dashboard**. Keep the kiosk open in a second window.
 
 ## 4. Bus driver on your phone (5 min)
 
-On the phone open **https://tap-and-select.vercel.app/login** → **Demo login → Driver** (bus R2-01).
-On the laptop, as Admin or Dispatcher, approve a Remera (R2) recommendation first so R2-01 is on the way.
+On the laptop, as Admin or Dispatcher, approve a recommendation first and note which bus was released
+(e.g. R2-01). On the phone open **https://tap-and-select.vercel.app/login** → **Demo login → Driver**.
+
+- [ ] The driver starts on R2-01. Tap **Change bus**, pick the released bus (taken buses are greyed
+      out), or **Keep** to go back.
 
 - [ ] **Start tracking** and allow location. "Last sent" and "Accuracy" fill in.
 - [ ] On the laptop, the bus appears on the dashboard's live map with an ETA. The kiosk ticket ETA follows.

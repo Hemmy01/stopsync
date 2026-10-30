@@ -59,6 +59,12 @@ function apply(session: Session | null) {
   });
 }
 
+/** Reload the profile, e.g. after a driver picks another bus. */
+export async function refreshAccount() {
+  const { data } = await getSupabase().auth.getSession();
+  apply(data.session);
+}
+
 function start() {
   if (started || SUPABASE_CONFIG_ERROR) return;
   started = true;

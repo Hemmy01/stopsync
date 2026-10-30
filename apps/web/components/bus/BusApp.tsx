@@ -6,8 +6,8 @@ import { Banner } from "@/components/Banner";
 import { KigaliClock } from "@/components/KigaliClock";
 import { HomeLink } from "@/components/HomeLink";
 import { autoTrackingAction, unblockLocationSteps } from "@/lib/auto-tracking";
-import { adjustOccupancy, completeTrip, markBusArrived } from "@/lib/rpc";
-import { useAccount } from "@/lib/use-account";
+import { adjustOccupancy, chooseMyBus, completeTrip, loadTakenBuses, markBusArrived } from "@/lib/rpc";
+import { refreshAccount, useAccount } from "@/lib/use-account";
 import { getSupabase, STOP_ID, type StopSyncClient } from "@/lib/supabase";
 import { useActions } from "@/lib/use-actions";
 import { useBusTracker } from "@/lib/use-bus-tracker";
@@ -45,8 +45,13 @@ function saveBus(busId: string | null) {
 
 export function BusApp() {
   const account = useAccount();
-  // A driver only ever sees their own bus; admins pick any.
-  const ownBus = account.role === "driver" ? account.busId : null;
+  // A driver drives the bus linked to their account (chosen per shift); admins pick any.
+  const isDriver = account.role === "driver";
+  const ownBus = isDriver ? account.busId : null;
+  const [choosing, setChoosing] = useState(false);
+  const [taken, setTaken] = useState<string[]>([]);
+  const [choosingId, setChoosingId] = useState<string | null>(null);
+  const [chooseError, setChooseError] = useState<string | null>(null);
   const { data: buses, loading, error } = useRealtimeData(TABLES, loadBuses);
   const [pickedId, setBusId] = useState<string | null>(null);
   const busId = ownBus ?? pickedId;
@@ -64,7 +69,21 @@ export function BusApp() {
     restore();
   }, []);
 
-  const bus = buses?.find((b) => b.id === busId) ?? null;
+  const showDriverPicker = isDriver && (!ownBus || choosing);
+
+  // Which buses other drivers hold, refreshed whenever the picker opens.
+  useEffect(() => {
+    if (!showDriverPicker) return;
+    let live = true;
+    loadTakenBuses(getSupabase())
+      .then((ids) => live && setTaken(ids))
+      .catch(() => live && setTaken([]));
+    return () => {
+      live = false;
+    };
+  }, [showDriverPicker]);
+
+  const bus = showDriverPicker ? null : (buses?.find((b) => b.id === busId) ?? null);
   const status = bus?.status ?? null;
   const trip = bus?.released_at ?? null;
   const driverStopped = trip !== null && stoppedTrip === trip;
@@ -85,6 +104,29 @@ export function BusApp() {
     setArrivalMessage(null);
     setBusId(id);
     saveBus(id);
+  };
+
+  /** Stop sharing for the old bus, then link the account to the new one. */
+  const chooseShiftBus = async (id: string) => {
+    if (id === ownBus) {
+      setChoosing(false);
+      return;
+    }
+    setChooseError(null);
+    setChoosingId(id);
+    tracker.stop();
+    tracker.reset();
+    setStoppedTrip(null);
+    setArrivalMessage(null);
+    const result = await chooseMyBus(getSupabase(), id);
+    if (result.ok) {
+      await refreshAccount();
+      setChoosing(false);
+    } else {
+      setChooseError(result.message);
+      void loadTakenBuses(getSupabase()).then(setTaken, () => {});
+    }
+    setChoosingId(null);
   };
 
   const arrive = async () => {
@@ -131,17 +173,42 @@ export function BusApp() {
 
         {loading && !buses ? <p className="text-muted">Loading buses…</p> : null}
 
-        {buses && !bus && !ownBus && account.role !== "driver" ? <BusPicker buses={buses} onPick={pick} /> : null}
+        {buses && !bus && !isDriver ? <BusPicker buses={buses} onPick={pick} /> : null}
 
-        {account.role === "driver" && !ownBus ? (
-          <Banner tone="warn" title="No bus assigned" className="mb-4">
-            Ask an admin to link your account to a bus.
-          </Banner>
+        {buses && showDriverPicker ? (
+          <>
+            {chooseError ? (
+              <Banner tone="danger" title="Couldn't pick that bus" className="mb-4">
+                {chooseError}
+              </Banner>
+            ) : null}
+            <BusPicker
+              buses={buses}
+              forShift
+              taken={taken}
+              current={ownBus}
+              pendingId={choosingId}
+              onPick={(id) => void chooseShiftBus(id)}
+              onKeep={() => {
+                setChooseError(null);
+                setChoosing(false);
+              }}
+            />
+          </>
         ) : null}
 
         {bus ? (
           <>
-            {ownBus ? null : (
+            {isDriver ? (
+              <button
+                type="button"
+                onClick={() => setChoosing(true)}
+                className="mb-4 inline-flex h-11 items-center gap-2 font-semibold text-muted hover:text-ink"
+              >
+                <ArrowLeft aria-hidden className="h-4 w-4" />
+                Change bus
+              </button>
+            ) : (
               <button
                 type="button"
                 onClick={() => pick(null)}
