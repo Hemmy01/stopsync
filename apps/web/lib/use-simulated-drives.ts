@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useSyncExternalStore } from "react";
 import type { LatLng } from "./eta";
 import { simulateBusPosition } from "./rpc";
 import { DRIVE_STEP_MS, drivePath } from "./simulate-drive";
@@ -18,55 +18,64 @@ export interface DriveProgress {
   steps: number;
 }
 
-/**
- * Runs simulated drives from this browser tab, one step every DRIVE_STEP_MS. A drive ends at
- * the kiosk, when the server refuses a step (e.g. the bus already arrived) or on Stop.
- * Closing the tab stops it; the bus simply stays where it last was.
- */
+interface DrivesState {
+  progress: Readonly<Record<string, DriveProgress>>;
+  errors: Readonly<Record<string, string>>;
+}
+
+// Drives live in this module, not in the dashboard component: Next keeps visited pages alive
+// but pauses their effects, so a component-owned timer froze the bus as soon as the presenter
+// switched to the kiosk. Now a drive keeps going across pages until it arrives, is stopped,
+// or the tab is closed or reloaded (the bus then stays where it last was).
+const EMPTY: DrivesState = { progress: {}, errors: {} };
+let state: DrivesState = EMPTY;
+const timers = new Map<string, ReturnType<typeof setTimeout>>();
+const listeners = new Set<() => void>();
+
+function update(change: (s: DrivesState) => DrivesState) {
+  state = change(state);
+  for (const notify of listeners) notify();
+}
+
+function subscribe(notify: () => void) {
+  listeners.add(notify);
+  return () => {
+    listeners.delete(notify);
+  };
+}
+
+export function stopDrive(busId: string) {
+  clearTimeout(timers.get(busId));
+  timers.delete(busId);
+  update((s) => ({ ...s, progress: without(s.progress, busId) }));
+}
+
+/** One step every DRIVE_STEP_MS until the kiosk, a refused step (e.g. the bus already arrived) or Stop. */
+export function startDrive(busId: string, stops: readonly LatLng[]) {
+  const path = drivePath(stops);
+  if (path.length === 0 || timers.has(busId)) return;
+  update((s) => ({ ...s, errors: without(s.errors, busId) }));
+
+  const tick = async (i: number) => {
+    update((s) => ({ ...s, progress: { ...s.progress, [busId]: { step: i + 1, steps: path.length } } }));
+    const result = await simulateBusPosition(getSupabase(), busId, path[i]);
+    if (!timers.has(busId)) return; // stopped meanwhile
+    if (!result.ok) {
+      update((s) => ({ ...s, errors: { ...s.errors, [busId]: result.message } }));
+      stopDrive(busId);
+      return;
+    }
+    if (result.data.status === "arrived" || i + 1 >= path.length) {
+      stopDrive(busId);
+      return;
+    }
+    timers.set(busId, setTimeout(() => void tick(i + 1), DRIVE_STEP_MS));
+  };
+  timers.set(busId, setTimeout(() => void tick(0), 0));
+}
+
+/** Simulated drives running in this tab, and controls for them. */
 export function useSimulatedDrives() {
-  const [progress, setProgress] = useState<Readonly<Record<string, DriveProgress>>>({});
-  const [errors, setErrors] = useState<Readonly<Record<string, string>>>({});
-  const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
-
-  const stop = useCallback((busId: string) => {
-    clearTimeout(timers.current.get(busId));
-    timers.current.delete(busId);
-    setProgress((p) => without(p, busId));
-  }, []);
-
-  const start = useCallback(
-    (busId: string, stops: readonly LatLng[]) => {
-      const path = drivePath(stops);
-      if (path.length === 0 || timers.current.has(busId)) return;
-      setErrors((e) => without(e, busId));
-
-      const tick = async (i: number) => {
-        setProgress((p) => ({ ...p, [busId]: { step: i + 1, steps: path.length } }));
-        const result = await simulateBusPosition(getSupabase(), busId, path[i]);
-        if (!timers.current.has(busId)) return; // stopped meanwhile
-        if (!result.ok) {
-          setErrors((e) => ({ ...e, [busId]: result.message }));
-          stop(busId);
-          return;
-        }
-        if (result.data.status === "arrived" || i + 1 >= path.length) {
-          stop(busId);
-          return;
-        }
-        timers.current.set(busId, setTimeout(() => void tick(i + 1), DRIVE_STEP_MS));
-      };
-      timers.current.set(busId, setTimeout(() => void tick(0), 0));
-    },
-    [stop],
-  );
-
-  useEffect(() => {
-    const running = timers.current;
-    return () => {
-      for (const timer of running.values()) clearTimeout(timer);
-      running.clear();
-    };
-  }, []);
-
-  return { progress, errors, start, stop };
+  const { progress, errors } = useSyncExternalStore(subscribe, () => state, () => EMPTY);
+  return { progress, errors, start: startDrive, stop: stopDrive };
 }
