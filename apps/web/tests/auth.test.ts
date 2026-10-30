@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  afterSignIn,
   canAdminister,
   canDispatch,
   canOpen,
@@ -75,5 +76,19 @@ describe("signInErrorMessage", () => {
     expect(signInErrorMessage("Request rate limit reached")).toMatch(/Too many sign-ins/);
     expect(signInErrorMessage("whatever", 429)).toMatch(/Live board/);
     expect(signInErrorMessage("Invalid login credentials")).toBe("Invalid login credentials");
+  });
+});
+
+describe("afterSignIn", () => {
+  it("returns to the page the visitor came from when their role may open it", () => {
+    expect(afterSignIn("dispatcher", "/dashboard")).toBe("/dashboard");
+    expect(afterSignIn("viewer", "/live")).toBe("/live");
+    expect(afterSignIn("admin", "/kiosk?mock=1")).toBe("/kiosk?mock=1");
+  });
+
+  it("goes to the role's home instead of a page it can't open", () => {
+    expect(afterSignIn("driver", "/kiosk")).toBe("/bus");
+    expect(afterSignIn("kiosk", "/admin/users")).toBe("/kiosk");
+    expect(afterSignIn("dispatcher", null)).toBe("/dashboard");
   });
 });

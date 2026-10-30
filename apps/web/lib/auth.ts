@@ -59,6 +59,17 @@ export function safeNext(next: string | null): string | null {
   return next;
 }
 
+/**
+ * Where to go after signing in: the page the visitor came from if their role may open it,
+ * otherwise their role's home (so a driver sent from /kiosk lands on /bus, not in a loop).
+ */
+export function afterSignIn(role: Role, next: string | null): string {
+  if (!next) return HOME_FOR[role];
+  const path = next.split(/[?#]/)[0];
+  const page = (Object.keys(PAGE_ROLES) as ProtectedPage[]).find((p) => path === p || path.startsWith(`${p}/`));
+  return !page || canOpen(role, page) ? next : HOME_FOR[role];
+}
+
 /** Demo logins offered when NEXT_PUBLIC_DEMO_ROLES isn't set: everyone but admin. */
 export const DEFAULT_DEMO_ROLES: readonly Role[] = ["kiosk", "dispatcher", "driver", "viewer"];
 

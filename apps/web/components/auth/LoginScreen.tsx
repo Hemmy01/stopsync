@@ -6,7 +6,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Banner } from "@/components/Banner";
 import { Button } from "@/components/Button";
 import { HomeLink } from "@/components/HomeLink";
-import { demoRoles, HOME_FOR, isRole, ROLE_LABEL, safeNext, signInErrorMessage, type Role } from "@/lib/auth";
+import { afterSignIn, demoRoles, isRole, ROLE_LABEL, safeNext, signInErrorMessage, type Role } from "@/lib/auth";
 import { getSupabase } from "@/lib/supabase";
 import { signOut, useAccountState } from "@/lib/use-account";
 
@@ -48,7 +48,7 @@ export function LoginScreen() {
     read();
   }, []);
 
-  const go = (role: Role) => router.replace(next ?? HOME_FOR[role]);
+  const go = (role: Role) => router.replace(afterSignIn(role, next));
 
   const roleOf = async (userId: string): Promise<Role> => {
     const { data } = await getSupabase().from("profiles").select("role").eq("id", userId).maybeSingle();
@@ -215,11 +215,14 @@ export function LoginScreen() {
         </section>
 
         {DEMO_MODE ? (
-          <section aria-labelledby="demo-title" className="rounded-card border border-line bg-surface p-6">
+          // First on phones, so a tester doesn't scroll past the password form.
+          <section aria-labelledby="demo-title" className="order-first rounded-card border border-line bg-surface p-6 lg:order-none">
             <h2 id="demo-title" className="text-xl">
               Demo login as…
             </h2>
-            <p className="mt-1 text-sm text-muted">One click per role. Shown only in demo mode.</p>
+            <p className="mt-1 text-sm text-muted">
+              One click per role, for testing. {state.status === "signed_in" ? "Picking another role switches account." : "Shown only in demo mode."}
+            </p>
             <ul className="mt-4 grid gap-2">
               {DEMO_ROLES.map((role) => (
                 <li key={role}>
@@ -234,7 +237,13 @@ export function LoginScreen() {
                       <span className="block font-semibold">{ROLE_LABEL[role]}</span>
                       <span className="block text-sm text-muted">{DEMO_DETAIL[role]}</span>
                     </span>
-                    <span className="text-sm font-semibold text-muted">{pending === role ? "Signing in…" : "Sign in"}</span>
+                    <span className="text-sm font-semibold text-muted">{pending === role
+                        ? "Signing in…"
+                        : state.status === "signed_in" && state.account.role === role
+                          ? "Current"
+                          : state.status === "signed_in"
+                            ? "Switch"
+                            : "Sign in"}</span>
                   </button>
                 </li>
               ))}

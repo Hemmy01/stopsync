@@ -1,7 +1,7 @@
 "use client";
 
 import type { Session } from "@supabase/supabase-js";
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useSyncExternalStore, type ReactNode } from "react";
 import { isRole, type Account } from "./auth";
 import { getSupabase, SUPABASE_CONFIG_ERROR } from "./supabase";
 
@@ -34,42 +34,58 @@ async function loadAccount(session: Session): Promise<AccountState> {
   };
 }
 
+// One shared, always-current account state for the whole app. A per-component copy went stale:
+// Next keeps visited pages alive in the background, so a guard that saw "signed out" before
+// the sign-in would bounce the visitor back to /login when they returned to that page.
+const LOADING: AccountState = { status: "loading" };
+let current: AccountState = SUPABASE_CONFIG_ERROR ? { status: "error", message: SUPABASE_CONFIG_ERROR } : LOADING;
+const listeners = new Set<() => void>();
+let started = false;
+let latest = 0;
+
+function publish(next: AccountState) {
+  current = next;
+  for (const notify of listeners) notify();
+}
+
+function apply(session: Session | null) {
+  const ticket = ++latest;
+  if (!session) {
+    publish({ status: "signed_out" });
+    return;
+  }
+  void loadAccount(session).then((next) => {
+    if (ticket === latest) publish(next);
+  });
+}
+
+function start() {
+  if (started || SUPABASE_CONFIG_ERROR) return;
+  started = true;
+  // Fires INITIAL_SESSION straight away, then on every change, for the life of the tab.
+  getSupabase().auth.onAuthStateChange((event, session) => {
+    if (event === "TOKEN_REFRESHED") return;
+    // A new or different user: "loading" at once, so no guard acts on the old state while the
+    // profile loads.
+    if (session && !(current.status === "signed_in" && current.account.userId === session.user.id)) {
+      if (current.status !== "loading") publish(LOADING);
+    }
+    // Supabase calls must not be awaited inside this callback, so the profile load runs after it.
+    setTimeout(() => apply(session), 0);
+  });
+}
+
+function subscribe(notify: () => void) {
+  start();
+  listeners.add(notify);
+  return () => {
+    listeners.delete(notify);
+  };
+}
+
 /** The signed-in account, kept in sync with Supabase Auth (sign in, sign out, other tabs). */
 export function useAccountState(): AccountState {
-  const [state, setState] = useState<AccountState>(
-    SUPABASE_CONFIG_ERROR ? { status: "error", message: SUPABASE_CONFIG_ERROR } : { status: "loading" },
-  );
-
-  useEffect(() => {
-    if (SUPABASE_CONFIG_ERROR) return;
-    const auth = getSupabase().auth;
-    let live = true;
-    let latest = 0;
-    const apply = (session: Session | null) => {
-      const ticket = ++latest;
-      if (!session) {
-        setState({ status: "signed_out" });
-        return;
-      }
-      void loadAccount(session).then((next) => {
-        if (live && ticket === latest) setState(next);
-      });
-    };
-    // Fires INITIAL_SESSION straight away, then on every change. Supabase calls must not be
-    // awaited inside this callback, so the profile load runs after it returns.
-    const { data } = auth.onAuthStateChange((event, session) => {
-      if (event === "TOKEN_REFRESHED") return;
-      setTimeout(() => {
-        if (live) apply(session);
-      }, 0);
-    });
-    return () => {
-      live = false;
-      data.subscription.unsubscribe();
-    };
-  }, []);
-
-  return state;
+  return useSyncExternalStore(subscribe, () => current, () => LOADING);
 }
 
 const AccountContext = createContext<Account | null>(null);

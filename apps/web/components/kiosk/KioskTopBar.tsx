@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { KigaliClock } from "@/components/KigaliClock";
+import { AccountBadge } from "@/components/auth/AccountBadge";
 import { HomeLink } from "@/components/HomeLink";
 import type { BoardStatus } from "@/lib/use-board";
 import { BoardStatusPill } from "./BoardStatusPill";
@@ -26,6 +27,7 @@ export function KioskTopBar({ stopName, boardStatus, actions, sound }: KioskTopB
         <BoardStatusPill status={boardStatus} />
         {actions}
         <KigaliClock className="ml-2 text-[32px] font-medium" />
+        <AccountBadge compact />
       </div>
     </header>
   );
