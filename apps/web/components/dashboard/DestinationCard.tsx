@@ -1,9 +1,11 @@
 import clsx from "clsx";
 import { AlertTriangle, Check, X } from "lucide-react";
 import { Button } from "@/components/Button";
+import { OccupancyBar } from "@/components/OccupancyBar";
 import { RouteBadge } from "@/components/RouteBadge";
 import type { Decision, DestinationSummary } from "@/lib/dashboard";
 import type { Bus } from "@/lib/departures";
+import type { DispatchPlaces } from "@/lib/occupancy";
 
 export interface CardActions {
   approve: (decision: Decision) => void;
@@ -17,7 +19,9 @@ export interface CardActions {
 interface DestinationCardProps {
   code: string;
   name: string;
+  /** Seats + standing per bus on this route. */
   capacity: number;
+  places: DispatchPlaces;
   releaseLoadPct: number;
   summary: DestinationSummary;
   buses: Bus[];
@@ -35,11 +39,21 @@ function SectionLabel({ children }: { children: string }) {
   return <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted">{children}</p>;
 }
 
-function LoadBar({ pct, high, threshold }: { pct: number; high: boolean; threshold: number }) {
+function LoadBar({
+  pct,
+  high,
+  threshold,
+  caption,
+}: {
+  pct: number;
+  high: boolean;
+  threshold: number;
+  caption: string;
+}) {
   return (
     <div>
       <div className="flex items-baseline justify-between text-sm">
-        <span className="text-muted">Load</span>
+        <span className="text-muted">{caption}</span>
         <span className={clsx("num font-semibold", high && "text-ink")}>
           {high ? <AlertTriangle aria-hidden className="mr-1 inline h-4 w-4 text-warn" /> : null}
           {pct}%{high ? ` · above ${threshold}%` : ""}
@@ -51,7 +65,7 @@ function LoadBar({ pct, high, threshold }: { pct: number; high: boolean; thresho
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={Math.min(pct, 100)}
-        aria-label="Load of bus capacity"
+        aria-label="Waiting passengers as a share of the next bus's free places"
       >
         <div
           className={clsx("h-full rounded-pill transition-[width] duration-200 ease-out", high ? "bg-warn" : "bg-ink")}
@@ -66,14 +80,17 @@ function BusRow({ bus, actions }: { bus: Bus; actions: CardActions }) {
   const arriveKey = `arrive-${bus.id}`;
   const resetKey = `reset-${bus.id}`;
   return (
-    <li className="flex min-h-11 items-center gap-3">
+    <li className="flex min-h-11 items-center gap-3 py-1">
       <span className="num w-14 font-semibold">{bus.id}</span>
-      <span className={clsx("flex-1 text-sm", bus.status === "at_terminal" ? "text-muted" : "font-semibold")}>
-        {BUS_STATUS[bus.status] ?? bus.status}
-        {bus.status === "on_the_way" && bus.eta_minutes != null ? (
-          <span className="num"> · {bus.eta_minutes} min</span>
-        ) : null}
-      </span>
+      <div className="min-w-0 flex-1">
+        <p className={clsx("text-sm", bus.status === "at_terminal" ? "text-muted" : "font-semibold")}>
+          {BUS_STATUS[bus.status] ?? bus.status}
+          {bus.status === "on_the_way" && bus.eta_minutes != null ? (
+            <span className="num"> · {bus.eta_minutes} min</span>
+          ) : null}
+        </p>
+        <OccupancyBar bus={bus} compact className="mt-1" />
+      </div>
       {bus.status === "on_the_way" ? (
         <Button size="md" onClick={() => actions.arrive(bus)} pending={actions.isPending(arriveKey)}>
           Bus arrived
@@ -135,6 +152,7 @@ export function DestinationCard({
   code,
   name,
   capacity,
+  places,
   releaseLoadPct,
   summary,
   buses,
@@ -152,7 +170,7 @@ export function DestinationCard({
         <RouteBadge code={code} size="sm" />
         <h2 className="flex-1 text-xl">{name}</h2>
         <span className="text-sm text-muted">
-          Bus <span className="num">{capacity}</span> seats
+          Bus <span className="num">{capacity}</span> places
         </span>
       </header>
 
@@ -174,7 +192,18 @@ export function DestinationCard({
             </span>
           </p>
         </div>
-        <LoadBar pct={summary.loadPct} high={summary.highLoad} threshold={releaseLoadPct} />
+        <LoadBar
+          pct={summary.loadPct}
+          high={summary.highLoad}
+          threshold={releaseLoadPct}
+          caption={
+            places.onTheWay === 0
+              ? `Load of next bus · ${places.nextFree} free`
+              : summary.uncovered === 0
+                ? "Bus on the way has room for everyone"
+                : `${summary.uncovered} won't fit the bus on the way · next bus ${places.nextFree} free`
+          }
+        />
       </div>
 
       <div className="border-b border-line p-4">

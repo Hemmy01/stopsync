@@ -22,6 +22,8 @@ function token(over: Partial<Token>): Token {
     id: nextId++,
     code: "R3-001",
     stop_id: "STOP-01",
+    bus_id: null,
+    completed_at: null,
     destination: "KIM",
     card_id: null,
     method: "voice",
@@ -63,7 +65,12 @@ const bus = (id: string, destination: string, status: string): Bus => ({
   next_stop_id: null,
   stops_remaining: null,
   distance_remaining_m: null,
+  seats: 40,
+  standing: 30,
+  occupancy: 0,
 });
+
+const places = (nextFree: number) => ({ onTheWay: 0, onTheWayFree: 0, nextFree });
 
 describe("summarizeDestination", () => {
   it("counts waiting passengers, oldest wait and load", () => {
@@ -73,9 +80,10 @@ describe("summarizeDestination", () => {
       token({ status: "boarded" }),
       token({ destination: "NYA" }),
     ];
-    expect(summarizeDestination("KIM", tokens, 70, 70, NOW)).toEqual({
+    expect(summarizeDestination("KIM", tokens, places(70), 70, NOW)).toEqual({
       waiting: 2,
       oldestWaitMin: 16,
+      uncovered: 2,
       loadPct: 3,
       highLoad: false,
     });
@@ -83,13 +91,22 @@ describe("summarizeDestination", () => {
 
   it("flags high load at the release threshold", () => {
     const tokens = Array.from({ length: 7 }, () => token({}));
-    expect(summarizeDestination("KIM", tokens, 10, 70, NOW)).toMatchObject({ loadPct: 70, highLoad: true });
+    expect(summarizeDestination("KIM", tokens, places(10), 70, NOW)).toMatchObject({ loadPct: 70, highLoad: true });
+  });
+
+  it("only counts passengers the bus on the way has no room for", () => {
+    const tokens = Array.from({ length: 10 }, () => token({}));
+    const otw = { onTheWay: 1, onTheWayFree: 4, nextFree: 10 };
+    expect(summarizeDestination("KIM", tokens, otw, 50, NOW)).toMatchObject({ uncovered: 6, loadPct: 60, highLoad: true });
+    const roomy = { ...otw, onTheWayFree: 12 };
+    expect(summarizeDestination("KIM", tokens, roomy, 50, NOW)).toMatchObject({ uncovered: 0, loadPct: 0, highLoad: false });
   });
 
   it("handles an empty queue", () => {
-    expect(summarizeDestination("KIM", [], 70, 70, NOW)).toEqual({
+    expect(summarizeDestination("KIM", [], places(70), 70, NOW)).toEqual({
       waiting: 0,
       oldestWaitMin: null,
+      uncovered: 0,
       loadPct: 0,
       highLoad: false,
     });
@@ -102,9 +119,10 @@ describe("computeTotals", () => {
       token({}),
       token({ status: "boarded", boarded_at: "2026-10-27T08:00:00Z" }),
       token({ status: "boarded", boarded_at: "2026-10-26T20:00:00Z" }), // yesterday in Kigali
+      token({ status: "completed", boarded_at: "2026-10-27T08:00:00Z" }), // boarded today, already off
     ];
     const buses = [bus("R3-01", "KIM", "on_the_way"), bus("R3-02", "KIM", "at_terminal")];
-    expect(computeTotals(tokens, buses, DAY_START)).toEqual({ waiting: 1, boardedToday: 1, onTheWay: 1 });
+    expect(computeTotals(tokens, buses, DAY_START)).toEqual({ waiting: 1, boardedToday: 2, onTheWay: 1 });
   });
 });
 
@@ -144,11 +162,15 @@ describe("buildActivity", () => {
       decision({ id: 3, created_at: "2026-10-27T09:11:00Z", status: "superseded" }),
     ];
     const events: BusEvent[] = [
-      { id: 4, bus_id: "R3-01", stop_id: "STOP-01", event: "arrived", source: "gps", boarded_count: 12, created_at: "2026-10-27T09:30:00Z" },
-      { id: 5, bus_id: "R3-01", stop_id: "STOP-04", event: "departed", source: "gps", boarded_count: null, created_at: "2026-10-27T09:14:00Z" },
+      { id: 4, bus_id: "R3-01", stop_id: "STOP-01", event: "arrived", source: "gps", boarded_count: 12, delta: null, occupancy: 12, created_at: "2026-10-27T09:30:00Z" },
+      { id: 5, bus_id: "R3-01", stop_id: "STOP-04", event: "departed", source: "gps", boarded_count: null, delta: null, occupancy: null, created_at: "2026-10-27T09:14:00Z" },
+      { id: 6, bus_id: "R3-01", stop_id: null, event: "occupancy", source: "manual", boarded_count: null, delta: 1, occupancy: 13, created_at: "2026-10-27T09:31:00Z" },
+      { id: 7, bus_id: "R3-01", stop_id: "STOP-04", event: "completed", source: "manual", boarded_count: 12, delta: null, occupancy: 1, created_at: "2026-10-27T09:50:00Z" },
     ];
     const feed = buildActivity(tokens, decisions, events, [bus("R3-01", "KIM", "arrived")]);
     expect(feed.map((i) => i.text)).toEqual([
+      "Bus R3-01 back at the terminal (driver) · 12 got off",
+      "Driver corrected R3-01: +1 → 13 on board",
       "Bus R3-01 arrived (GPS) · 12 boarded",
       "Bus R3-01 left its terminal (GPS)",
       "HQ approved a release to Kimironko",

@@ -6,6 +6,7 @@ import { useState } from "react";
 import { RouteBadge } from "@/components/RouteBadge";
 import type { Bus } from "@/lib/departures";
 import { getDestination } from "@/lib/destinations";
+import { freeLabel, totalPlaces } from "@/lib/occupancy";
 import { busProgress, routeFor, type Route } from "@/lib/routes";
 import { formatKigaliTime, minutesSince } from "@/lib/time";
 
@@ -98,6 +99,8 @@ function BusDetails({ bus, route, now }: { bus: Bus; route: Route | undefined; n
       bus.distance_remaining_m === null ? "—" : `${(bus.distance_remaining_m / 1000).toFixed(1)} km`,
     ],
     ["ETA", bus.eta_minutes === null ? "—" : `${bus.eta_minutes} min`],
+    ["On board", `${bus.occupancy} / ${totalPlaces(bus)}`],
+    ["Free", freeLabel(bus).replace(/ free$/, "")],
     ["Left terminal", bus.departed_at ? formatKigaliTime(new Date(bus.departed_at)) : "—"],
     [
       "Last GPS",

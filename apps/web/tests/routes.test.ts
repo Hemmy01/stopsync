@@ -31,6 +31,9 @@ function bus(over: Partial<Bus> = {}): Bus {
     next_stop_id: "STOP-11",
     stops_remaining: 2,
     distance_remaining_m: 2000,
+    seats: 40,
+    standing: 30,
+    occupancy: 0,
     ...over,
   };
 }

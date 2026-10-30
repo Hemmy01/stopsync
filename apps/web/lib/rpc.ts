@@ -103,6 +103,14 @@ export const approveDecision = (c: StopSyncClient, id: number) => action(c.rpc("
 export const dismissDecision = (c: StopSyncClient, id: number) => action(c.rpc("dismiss_decision", { p_decision: id }));
 export const resetBus = (c: StopSyncClient, busId: string) => action(c.rpc("reset_bus", { p_bus: busId }));
 
+/** The bus is back at its terminal: riders get off (tokens → completed), occupancy drops. */
+export const completeTrip = (c: StopSyncClient, busId: string, source: "dashboard" | "gps" | "manual") =>
+  action(c.rpc("complete_trip", { p_bus: busId, p_source: source }));
+
+/** The driver's −1 / +1 correction to who is on board. */
+export const adjustOccupancy = (c: StopSyncClient, busId: string, delta: number) =>
+  action(c.rpc("adjust_occupancy", { p_bus: busId, p_delta: delta }));
+
 export const markBusArrived = (c: StopSyncClient, busId: string, source: "dashboard" | "gps" | "manual") =>
   action(c.rpc("mark_bus_arrived", { p_bus: busId, p_source: source }));
 

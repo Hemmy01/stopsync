@@ -7,7 +7,7 @@ import { Banner } from "@/components/Banner";
 import { KigaliClock } from "@/components/KigaliClock";
 import { Wordmark } from "@/components/Wordmark";
 import { autoTrackingAction, unblockLocationSteps } from "@/lib/auto-tracking";
-import { markBusArrived } from "@/lib/rpc";
+import { adjustOccupancy, completeTrip, markBusArrived } from "@/lib/rpc";
 import { getSupabase, STOP_ID, type StopSyncClient } from "@/lib/supabase";
 import { useActions } from "@/lib/use-actions";
 import { useBusTracker } from "@/lib/use-bus-tracker";
@@ -92,6 +92,21 @@ export function BusApp() {
     }
   };
 
+  const backAtTerminal = async () => {
+    if (!bus) return;
+    setArrivalMessage(null);
+    const result = await run(`complete-${bus.id}`, () => completeTrip(getSupabase(), bus.id, "manual"));
+    if (result?.ok) {
+      const off = result.data.completed_count;
+      setArrivalMessage(typeof off === "number" ? `Trip ended · ${off} got off` : "Trip ended");
+    }
+  };
+
+  const adjust = (delta: 1 | -1) => {
+    if (!bus) return;
+    void run(`occupancy-${bus.id}`, () => adjustOccupancy(getSupabase(), bus.id, delta));
+  };
+
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col px-4 pb-10">
       <header className="flex h-16 items-center justify-between border-b border-line">
@@ -141,10 +156,17 @@ export function BusApp() {
                   setStoppedTrip(trip);
                 },
               }}
+              occupancy={{
+                onAdjust: adjust,
+                pending: isPending(`occupancy-${bus.id}`),
+                error: errors[`occupancy-${bus.id}`],
+              }}
               onArrived={() => void arrive()}
               arriving={isPending(`arrive-${bus.id}`)}
+              onBackAtTerminal={() => void backAtTerminal()}
+              completing={isPending(`complete-${bus.id}`)}
               arrivalMessage={arrivalMessage}
-              arrivalError={errors[`arrive-${bus.id}`]}
+              arrivalError={errors[`arrive-${bus.id}`] ?? errors[`complete-${bus.id}`]}
               stopName={stopName}
             />
           </>

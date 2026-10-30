@@ -44,7 +44,11 @@ const REAL = [
   ["Voice choice", "Real: Edge Impulse keyword model on the board"],
   ["Swipe choice over the sensor", "Real: the APDS9960 sensor's built-in swipe direction engine on the board (no ML)"],
   ["Kiosk, database, dispatch, dashboard", "Real"],
-  ["Bus location", "Real phone GPS (/bus page)"],
+  ["Bus location", "Real phone GPS (/bus page), starts by itself when HQ releases the bus. Future: a fixed GPS tracker (AVL) in each bus"],
+  [
+    "Seats and occupancy",
+    "Counted from tickets: boarding adds, riders get off at the terminal, the driver corrects with − / +. Future: Tap&Go validator taps or door counters for exact counts",
+  ],
   ["Card tap (RFID)", "Simulated: demo cards on screen"],
   ["Other stops", "Simulator script"],
 ] as const;
