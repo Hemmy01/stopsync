@@ -87,13 +87,14 @@ end $$;
 do $$
 declare r jsonb;
 begin
+  -- R4-02 leaves first: a bus still parked with free places would take T6 straight away.
+  perform complete_trip('R4-02', 'dashboard');
   insert into t values ('T6', create_token('STOP-01', 'DTN', 'FIFO-6', 'gesture', 1)->>'code');
   perform complete_trip('R4-01', 'dashboard');
   update buses set occupancy = 70 where id = 'R4-01';
   r := mark_bus_arrived('R4-01', 'dashboard');
   perform pg_temp.ok((r->>'boarded_count')::int = 0 and pg_temp.st('T6') = 'waiting', '4a full bus leaves T6 waiting');
   perform complete_trip('R4-01', 'dashboard');
-  perform complete_trip('R4-02', 'dashboard');
   update buses set occupancy = 0 where destination = 'DTN';
   perform pg_temp.ok(pg_temp.st('T0') = 'completed', '4b riders complete back at the terminal');
 end $$;
