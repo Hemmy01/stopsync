@@ -18,6 +18,11 @@ function bus(id: string, destination: string, status: Bus["status"], eta: number
     lng: null,
     location_updated_at: null,
     released_at: null,
+    departed_at: null,
+    last_stop_id: null,
+    next_stop_id: null,
+    stops_remaining: null,
+    distance_remaining_m: null,
   };
 }
 

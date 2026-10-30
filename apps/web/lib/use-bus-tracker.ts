@@ -62,12 +62,12 @@ export function useBusTracker(busId: string | null) {
     inFlight.current = true;
     lastSentAt.current = Date.now();
 
-    const result = await updateBusLocation(
-      getSupabase(),
-      busId,
-      position.coords.latitude,
-      position.coords.longitude,
-    ).catch((err: unknown) => ({ ok: false as const, message: err instanceof Error ? err.message : "Network error" }));
+    const result = await updateBusLocation(getSupabase(), busId, {
+      lat: position.coords.latitude,
+      lng: position.coords.longitude,
+      speed: position.coords.speed,
+      accuracy: position.coords.accuracy,
+    }).catch((err: unknown) => ({ ok: false as const, message: err instanceof Error ? err.message : "Network error" }));
     inFlight.current = false;
 
     if (!result.ok) {

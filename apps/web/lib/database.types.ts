@@ -59,36 +59,89 @@ export type Database = {
           },
         ]
       }
+      bus_positions: {
+        Row: {
+          accuracy: number | null
+          bus_id: string
+          id: number
+          lat: number
+          lng: number
+          recorded_at: string
+          speed: number | null
+        }
+        Insert: {
+          accuracy?: number | null
+          bus_id: string
+          id?: never
+          lat: number
+          lng: number
+          recorded_at?: string
+          speed?: number | null
+        }
+        Update: {
+          accuracy?: number | null
+          bus_id?: string
+          id?: never
+          lat?: number
+          lng?: number
+          recorded_at?: string
+          speed?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bus_positions_bus_id_fkey"
+            columns: ["bus_id"]
+            isOneToOne: false
+            referencedRelation: "buses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       buses: {
         Row: {
+          departed_at: string | null
           destination: string
+          distance_remaining_m: number | null
           eta_minutes: number | null
           id: string
+          last_stop_id: string | null
           lat: number | null
           lng: number | null
           location_updated_at: string | null
+          next_stop_id: string | null
           released_at: string | null
           status: string
+          stops_remaining: number | null
         }
         Insert: {
+          departed_at?: string | null
           destination: string
+          distance_remaining_m?: number | null
           eta_minutes?: number | null
           id: string
+          last_stop_id?: string | null
           lat?: number | null
           lng?: number | null
           location_updated_at?: string | null
+          next_stop_id?: string | null
           released_at?: string | null
           status?: string
+          stops_remaining?: number | null
         }
         Update: {
+          departed_at?: string | null
           destination?: string
+          distance_remaining_m?: number | null
           eta_minutes?: number | null
           id?: string
+          last_stop_id?: string | null
           lat?: number | null
           lng?: number | null
           location_updated_at?: string | null
+          next_stop_id?: string | null
           released_at?: string | null
           status?: string
+          stops_remaining?: number | null
         }
         Relationships: [
           {
@@ -97,6 +150,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "destinations"
             referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "buses_last_stop_id_fkey"
+            columns: ["last_stop_id"]
+            isOneToOne: false
+            referencedRelation: "stops"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "buses_next_stop_id_fkey"
+            columns: ["next_stop_id"]
+            isOneToOne: false
+            referencedRelation: "stops"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -252,6 +319,35 @@ export type Database = {
           },
         ]
       }
+      routes_stops: {
+        Row: {
+          distance_from_terminal_m: number
+          route: string
+          seq: number
+          stop_id: string
+        }
+        Insert: {
+          distance_from_terminal_m: number
+          route: string
+          seq: number
+          stop_id: string
+        }
+        Update: {
+          distance_from_terminal_m?: number
+          route?: string
+          seq?: number
+          stop_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "routes_stops_stop_id_fkey"
+            columns: ["stop_id"]
+            isOneToOne: false
+            referencedRelation: "stops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       selection_events: {
         Row: {
           confidence: number | null
@@ -321,6 +417,44 @@ export type Database = {
         }
         Relationships: []
       }
+      terminals: {
+        Row: {
+          id: string
+          lat: number
+          lng: number
+          name: string
+          radius_m: number
+          route: string
+          stop_id: string
+        }
+        Insert: {
+          id: string
+          lat: number
+          lng: number
+          name: string
+          radius_m?: number
+          route: string
+          stop_id: string
+        }
+        Update: {
+          id?: string
+          lat?: number
+          lng?: number
+          name?: string
+          radius_m?: number
+          route?: string
+          stop_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "terminals_stop_id_fkey"
+            columns: ["stop_id"]
+            isOneToOne: false
+            referencedRelation: "stops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       model_insights_today: {
@@ -373,13 +507,32 @@ export type Database = {
         Args: { p_bus: string; p_source?: string }
         Returns: Json
       }
+      prune_bus_positions: { Args: never; Returns: number }
       reset_bus: { Args: { p_bus: string }; Returns: Json }
       reset_demo: { Args: never; Returns: Json }
-      run_dispatch: { Args: never; Returns: undefined }
-      update_bus_location: {
-        Args: { p_bus: string; p_lat: number; p_lng: number }
-        Returns: Json
+      route_progress: {
+        Args: { p_lat: number; p_lng: number; p_route: string }
+        Returns: {
+          off_route_m: number
+          progress_m: number
+        }[]
       }
+      run_dispatch: { Args: never; Returns: undefined }
+      update_bus_location:
+        | {
+            Args: { p_bus: string; p_lat: number; p_lng: number }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_accuracy: number
+              p_bus: string
+              p_lat: number
+              p_lng: number
+              p_speed: number
+            }
+            Returns: Json
+          }
     }
     Enums: {
       [_ in never]: never

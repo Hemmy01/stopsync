@@ -58,6 +58,11 @@ const bus = (id: string, destination: string, status: string): Bus => ({
   lng: null,
   location_updated_at: null,
   released_at: null,
+  departed_at: null,
+  last_stop_id: null,
+  next_stop_id: null,
+  stops_remaining: null,
+  distance_remaining_m: null,
 });
 
 describe("summarizeDestination", () => {
@@ -140,10 +145,12 @@ describe("buildActivity", () => {
     ];
     const events: BusEvent[] = [
       { id: 4, bus_id: "R3-01", stop_id: "STOP-01", event: "arrived", source: "gps", boarded_count: 12, created_at: "2026-10-27T09:30:00Z" },
+      { id: 5, bus_id: "R3-01", stop_id: "STOP-04", event: "departed", source: "gps", boarded_count: null, created_at: "2026-10-27T09:14:00Z" },
     ];
     const feed = buildActivity(tokens, decisions, events, [bus("R3-01", "KIM", "arrived")]);
     expect(feed.map((i) => i.text)).toEqual([
       "Bus R3-01 arrived (GPS) · 12 boarded",
+      "Bus R3-01 left its terminal (GPS)",
       "HQ approved a release to Kimironko",
       "Recommend releasing a bus to Kimironko · Load 72% ≥ 70%",
       "R3-001 joined the queue for Kimironko · voice 91%",
