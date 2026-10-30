@@ -1,27 +1,32 @@
 import clsx from "clsx";
-import { BusFront, Clock3, MapPin } from "lucide-react";
+import { BusFront, CheckCircle2, Clock3, MapPin } from "lucide-react";
 import { RouteBadge } from "@/components/RouteBadge";
-import type { DepartureStatus } from "@/lib/departures";
 import { getDestination } from "@/lib/destinations";
+import type { TicketStatus } from "@/lib/queue";
 
 interface TicketCardProps {
   code: string;
   destination: string;
   /** Omitted for an existing ticket shown again. */
   position?: number;
-  status: DepartureStatus;
-  statusLine: string;
+  status: TicketStatus;
   /** Smaller code and padding, to leave room for the route strip on a 768 px screen. */
   compact?: boolean;
 }
 
-const STATUS_ICON = { waiting: Clock3, on_the_way: BusFront, boarding: MapPin } as const;
+const STATUS_ICON = {
+  waiting: Clock3,
+  on_the_way: BusFront,
+  called: MapPin,
+  not_called: Clock3,
+  done: CheckCircle2,
+} as const;
 
 /**
  * Boarding-pass ticket: route-colour band, huge mono code, and a perforated
  * stub with the live status.
  */
-export function TicketCard({ code, destination, position, status, statusLine, compact = false }: TicketCardProps) {
+export function TicketCard({ code, destination, position, status, compact = false }: TicketCardProps) {
   const dest = getDestination(destination);
   const Icon = STATUS_ICON[status.kind];
 
@@ -64,11 +69,23 @@ export function TicketCard({ code, destination, position, status, statusLine, co
         <div>
           <Icon
             aria-hidden
-            className={clsx("h-10 w-10", status.kind === "waiting" ? "text-muted" : "text-accent")}
+            className={clsx(
+              "h-10 w-10",
+              status.kind === "on_the_way" || status.kind === "called" ? "text-accent" : "text-muted",
+            )}
           />
-          <p key={statusLine} className="animate-tick mt-3 font-display text-[28px] font-semibold leading-tight">
-            {statusLine}
+          <p
+            key={status.line}
+            className={clsx(
+              "animate-tick mt-3 font-display text-[28px] font-semibold leading-tight",
+              status.kind === "called" && "text-accent",
+            )}
+          >
+            {status.line}
           </p>
+          {status.kind === "called" ? (
+            <p className="num mt-1 text-lg font-semibold">Bus {status.busId}</p>
+          ) : null}
         </div>
         <p className="text-base text-muted">Updates live</p>
       </div>

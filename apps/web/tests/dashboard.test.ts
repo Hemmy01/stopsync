@@ -94,6 +94,13 @@ describe("summarizeDestination", () => {
     expect(summarizeDestination("KIM", tokens, places(10), 70, NOW)).toMatchObject({ loadPct: 70, highLoad: true });
   });
 
+  it("counts only tickets at stops the route serves", () => {
+    const tokens = [token({ stop_id: "STOP-01" }), token({ stop_id: "STOP-03" })];
+    const served = new Set(["STOP-01", "STOP-13"]);
+    expect(summarizeDestination("KIM", tokens, places(70), 70, NOW, served).waiting).toBe(1);
+    expect(summarizeDestination("KIM", tokens, places(70), 70, NOW).waiting).toBe(2);
+  });
+
   it("only counts passengers the bus on the way has no room for", () => {
     const tokens = Array.from({ length: 10 }, () => token({}));
     const otw = { onTheWay: 1, onTheWayFree: 4, nextFree: 10 };
@@ -166,17 +173,33 @@ describe("buildActivity", () => {
       { id: 5, bus_id: "R3-01", stop_id: "STOP-04", event: "departed", source: "gps", boarded_count: null, delta: null, occupancy: null, created_at: "2026-10-27T09:14:00Z" },
       { id: 6, bus_id: "R3-01", stop_id: null, event: "occupancy", source: "manual", boarded_count: null, delta: 1, occupancy: 13, created_at: "2026-10-27T09:31:00Z" },
       { id: 7, bus_id: "R3-01", stop_id: "STOP-04", event: "completed", source: "manual", boarded_count: 12, delta: null, occupancy: 1, created_at: "2026-10-27T09:50:00Z" },
+      { id: 8, bus_id: "R3-01", stop_id: "STOP-13", event: "boarded", source: "gps", boarded_count: 3, delta: null, occupancy: 3, created_at: "2026-10-27T09:20:00Z" },
     ];
-    const feed = buildActivity(tokens, decisions, events, [bus("R3-01", "KIM", "arrived")]);
+    const names = new Map([["STOP-13", "Kacyiru"]]);
+    const feed = buildActivity(tokens, decisions, events, [bus("R3-01", "KIM", "arrived")], 40, (id) => names.get(id) ?? id);
     expect(feed.map((i) => i.text)).toEqual([
       "Bus R3-01 back at the terminal (driver) · 12 got off",
       "Driver corrected R3-01: +1 → 13 on board",
       "Bus R3-01 arrived (GPS) · 12 boarded",
+      "Bus R3-01 boarded 3 at Kacyiru",
       "Bus R3-01 left its terminal (GPS)",
       "HQ approved a release to Kimironko",
       "Recommend releasing a bus to Kimironko · Load 72% ≥ 70%",
       "R3-001 joined the queue for Kimironko · voice 91%",
     ]);
+  });
+});
+
+describe("buildActivity with auto-dispatch", () => {
+  it("credits auto-dispatch, not HQ, for a release it made", () => {
+    const at = "2026-10-27T09:12:00.123Z";
+    const decisions = [decision({ id: 9, status: "approved", decided_at: at })];
+    const events: BusEvent[] = [
+      { id: 10, bus_id: "R3-02", stop_id: "STOP-01", event: "released", source: "auto", boarded_count: null, delta: null, occupancy: null, created_at: "2026-10-27T09:12:00.123+00:00" },
+    ];
+    const texts = buildActivity([], decisions, events, [bus("R3-02", "KIM", "on_the_way")]).map((i) => i.text);
+    expect(texts).toContain("Auto-dispatch approved a release to Kimironko");
+    expect(texts).toContain("Bus R3-02 released to Kimironko automatically");
   });
 });
 

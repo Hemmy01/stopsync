@@ -27,8 +27,12 @@ export function summarizeDestination(
   places: DispatchPlaces,
   releaseLoadPct: number,
   now: Date | null,
+  /** Stops on this destination's route: run_dispatch only counts tickets there. */
+  servedStops?: ReadonlySet<string>,
 ): DestinationSummary {
-  const waiting = tokens.filter((t) => t.destination === code && t.status === "waiting");
+  const waiting = tokens.filter(
+    (t) => t.destination === code && t.status === "waiting" && (!servedStops || servedStops.has(t.stop_id)),
+  );
   const oldest = waiting.reduce<string | null>(
     (min, t) => (min === null || t.created_at < min ? t.created_at : min),
     null,
@@ -96,7 +100,7 @@ export function pendingByDestination(decisions: readonly Decision[]): Record<str
   return result;
 }
 
-export type ActivityKind = "token" | "recommendation" | "approved" | "dismissed" | "released" | "departed" | "arrived" | "completed" | "occupancy" | "reset";
+export type ActivityKind = "token" | "recommendation" | "approved" | "dismissed" | "released" | "departed" | "boarded" | "arrived" | "completed" | "occupancy" | "reset";
 
 export interface ActivityItem {
   key: string;
@@ -124,8 +128,17 @@ export function buildActivity(
   events: readonly BusEvent[],
   buses: readonly Bus[],
   limit = 40,
+  stopName: (stopId: string) => string = (id) => id,
 ): ActivityItem[] {
   const items: ActivityItem[] = [];
+  const busDest = new Map(buses.map((b) => [b.id, b.destination]));
+  // run_dispatch approves and releases in one transaction, so an auto release shares the
+  // decision's decided_at exactly.
+  const autoReleasedAt = new Set(
+    events
+      .filter((e) => e.event === "released" && e.source === "auto")
+      .map((e) => `${busDest.get(e.bus_id)}@${new Date(e.created_at).getTime()}`),
+  );
 
   for (const t of tokens) {
     const how = METHOD_TEXT[t.method] ?? t.method;
@@ -156,18 +169,23 @@ export function buildActivity(
         at: d.decided_at,
         kind: d.status,
         destination: d.destination,
-        text: d.status === "approved" ? `HQ approved a release to ${name}` : `HQ dismissed the recommendation for ${name}`,
+        text:
+          d.status === "dismissed"
+            ? `HQ dismissed the recommendation for ${name}`
+            : autoReleasedAt.has(`${d.destination}@${new Date(d.decided_at).getTime()}`)
+              ? `Auto-dispatch approved a release to ${name}`
+              : `HQ approved a release to ${name}`,
       });
     }
   }
 
-  const busDest = new Map(buses.map((b) => [b.id, b.destination]));
   for (const e of events) {
     const destination = busDest.get(e.bus_id) ?? null;
-    const via = e.source === "gps" ? "GPS" : e.source === "manual" ? "driver" : "HQ";
+    const via = e.source === "gps" ? "GPS" : e.source === "manual" ? "driver" : e.source === "auto" ? "auto" : "HQ";
     const kind: ActivityKind =
       e.event === "released" ||
       e.event === "departed" ||
+      e.event === "boarded" ||
       e.event === "arrived" ||
       e.event === "completed" ||
       e.event === "occupancy"
@@ -175,9 +193,11 @@ export function buildActivity(
         : "reset";
     const text =
       kind === "released"
-        ? `Bus ${e.bus_id} released${destination ? ` to ${destName(destination)}` : ""}`
+        ? `Bus ${e.bus_id} released${destination ? ` to ${destName(destination)}` : ""}${e.source === "auto" ? " automatically" : ""}`
         : kind === "departed"
           ? `Bus ${e.bus_id} left its terminal (${via})`
+          : kind === "boarded"
+            ? `Bus ${e.bus_id} boarded ${e.boarded_count ?? 0} at ${e.stop_id ? stopName(e.stop_id) : "a stop"}`
           : kind === "arrived"
             ? `Bus ${e.bus_id} arrived (${via}) · ${e.boarded_count ?? 0} boarded`
             : kind === "completed"
@@ -198,6 +218,8 @@ export const CONFIG_LABELS: Record<string, { label: string; unit: string }> = {
   avg_bus_speed_kmh: { label: "Average bus speed", unit: "km/h" },
   arrival_radius_m: { label: "Arrival radius", unit: "m" },
   off_route_m: { label: "Off-route after", unit: "m" },
+  auto_dispatch: { label: "Auto-dispatch (1 on, 0 off)", unit: "" },
+  max_auto_releases_per_hour: { label: "Auto releases per route", unit: "/h" },
 };
 
 export function configValue(rows: readonly ConfigRow[], key: string, fallback: number): number {

@@ -45,6 +45,12 @@ export function DashboardApp() {
   const { run, isPending, errors } = useActions();
   const now = useNow();
   const { routes, error: routesError } = useRoutes();
+  const stopNames = useMemo(() => new Map(routes.flatMap((r) => r.stops.map((st) => [st.id, st.name]))), [routes]);
+  // Until routes load, count every stop (as before Phase 5).
+  const servedStopsOf = (code: string) => {
+    const route = routes.find((r) => r.route === DESTINATIONS.find((d) => d.code === code)?.route);
+    return route ? new Set(route.stops.map((st) => st.id)) : undefined;
+  };
 
   const act = (key: string, fn: () => Promise<ActionResult>) => {
     void run(key, fn).then(reload);
@@ -71,10 +77,12 @@ export function DashboardApp() {
         data.decisions,
         data.events,
         data.buses,
+        40,
+        (id) => stopNames.get(id) ?? id,
       ),
       releaseLoadPct: configValue(data.config, "release_load_pct", 70),
     };
-  }, [data]);
+  }, [data, stopNames]);
 
   // Seats + standing of the route's buses (bus_capacity is the fallback for a route with none).
   const capacityOf = (code: string) => {
@@ -120,7 +128,14 @@ export function DashboardApp() {
                 capacity={capacityOf(d.code)}
                 places={placesOf(d.code)}
                 releaseLoadPct={derived.releaseLoadPct}
-                summary={summarizeDestination(d.code, data.tokens, placesOf(d.code), derived.releaseLoadPct, now)}
+                summary={summarizeDestination(
+                  d.code,
+                  data.tokens,
+                  placesOf(d.code),
+                  derived.releaseLoadPct,
+                  now,
+                  servedStopsOf(d.code),
+                )}
                 buses={data.buses.filter((b) => b.destination === d.code)}
                 pending={derived.pending[d.code]}
                 actions={actions}

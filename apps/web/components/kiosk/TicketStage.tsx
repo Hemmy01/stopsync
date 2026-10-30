@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { DepartureStatus } from "@/lib/departures";
+import type { TicketStatus } from "@/lib/queue";
 import { StepCountdown } from "./StepCountdown";
 import { TicketCard } from "./TicketCard";
 
@@ -9,8 +9,7 @@ interface TicketStageProps {
   code: string;
   destination: string;
   position?: number;
-  status: DepartureStatus;
-  statusLine: string;
+  status: TicketStatus;
   timeoutMs: number;
   onDone: () => void;
   /** Shown under the ticket, e.g. the route strip while the bus is on the way. */
@@ -27,18 +26,34 @@ export function TicketStage({ heading, subheading, timeoutMs, onDone, below, ...
       </div>
 
       <TicketCard {...ticket} compact={Boolean(below)} />
-      {below ? <div className="mt-5 shrink-0">{below}</div> : null}
 
-      <div className="mt-auto flex items-end justify-between pt-6">
-        <StepCountdown ms={timeoutMs} label="Back to start in" />
-        <button
-          type="button"
-          onClick={onDone}
-          className="h-16 min-w-[200px] rounded-card bg-ink px-8 text-[22px] font-semibold text-paper transition-opacity duration-200 ease-out hover:opacity-90"
-        >
-          Done
-        </button>
-      </div>
+      {below ? (
+        // The strip takes the room the countdown row would, so Done sits beside it.
+        <div className="mt-5 flex shrink-0 items-end gap-6">
+          <div className="min-w-0 flex-1">{below}</div>
+          <div className="flex w-[200px] shrink-0 flex-col gap-3 pb-2">
+            <StepCountdown ms={timeoutMs} label="Back to start in" />
+            <DoneButton onDone={onDone} />
+          </div>
+        </div>
+      ) : (
+        <div className="mt-auto flex items-end justify-between pt-6">
+          <StepCountdown ms={timeoutMs} label="Back to start in" />
+          <DoneButton onDone={onDone} />
+        </div>
+      )}
     </div>
+  );
+}
+
+function DoneButton({ onDone }: { onDone: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onDone}
+      className="h-16 min-w-[200px] rounded-card bg-ink px-8 text-[22px] font-semibold text-paper transition-opacity duration-200 ease-out hover:opacity-90"
+    >
+      Done
+    </button>
   );
 }

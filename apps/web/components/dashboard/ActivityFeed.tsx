@@ -1,4 +1,4 @@
-import { BusFront, Check, Flag, Lightbulb, MapPin, Navigation, RotateCcw, Ticket, Users, X } from "lucide-react";
+import { BusFront, Check, Flag, Lightbulb, LogIn, MapPin, Navigation, RotateCcw, Ticket, Users, X } from "lucide-react";
 import type { ActivityItem, ActivityKind } from "@/lib/dashboard";
 import { getDestination } from "@/lib/destinations";
 import { formatKigaliTime } from "@/lib/time";
@@ -10,6 +10,7 @@ const ICONS: Record<ActivityKind, typeof Ticket> = {
   dismissed: X,
   released: BusFront,
   departed: Navigation,
+  boarded: LogIn,
   arrived: MapPin,
   completed: Flag,
   occupancy: Users,
