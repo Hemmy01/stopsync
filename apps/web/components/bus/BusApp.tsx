@@ -6,12 +6,15 @@ import { useEffect, useState } from "react";
 import { Banner } from "@/components/Banner";
 import { KigaliClock } from "@/components/KigaliClock";
 import { Wordmark } from "@/components/Wordmark";
+import { autoTrackingAction, unblockLocationSteps } from "@/lib/auto-tracking";
 import { markBusArrived } from "@/lib/rpc";
 import { getSupabase, STOP_ID, type StopSyncClient } from "@/lib/supabase";
 import { useActions } from "@/lib/use-actions";
 import { useBusTracker } from "@/lib/use-bus-tracker";
+import { useGeoPermission } from "@/lib/use-geo-permission";
 import { unwrap, useRealtimeData, type RealtimeTable } from "@/lib/use-realtime-data";
 import { useStopName } from "@/lib/use-stop";
+import { useWakeLock } from "@/lib/use-wake-lock";
 import { BusConsole } from "./BusConsole";
 import { BusPicker } from "./BusPicker";
 
@@ -46,6 +49,10 @@ export function BusApp() {
   const { run, isPending, errors } = useActions();
   const [arrivalMessage, setArrivalMessage] = useState<string | null>(null);
   const stopName = useStopName(STOP_ID);
+  const { permission, ask } = useGeoPermission();
+  const wakeLock = useWakeLock(tracker.sharing);
+  // The trip (released_at) on which the driver pressed Stop; a new release clears it.
+  const [stoppedTrip, setStoppedTrip] = useState<string | null>(null);
 
   useEffect(() => {
     const restore = () => setBusId(readSavedBus());
@@ -53,10 +60,23 @@ export function BusApp() {
   }, []);
 
   const bus = buses?.find((b) => b.id === busId) ?? null;
+  const status = bus?.status ?? null;
+  const trip = bus?.released_at ?? null;
+  const driverStopped = trip !== null && stoppedTrip === trip;
+  const blocked = permission === "denied" || tracker.error !== null;
+
+  // Start when HQ releases the bus, stop when it arrives at the end of the route.
+  const { sharing, start: startTracking, stop: stopTracking } = tracker;
+  useEffect(() => {
+    const action = autoTrackingAction({ status, sharing, driverStopped, blocked });
+    if (action === "start") startTracking();
+    if (action === "stop") stopTracking();
+  }, [status, sharing, driverStopped, blocked, startTracking, stopTracking]);
 
   const pick = (id: string | null) => {
     tracker.stop();
     tracker.reset();
+    setStoppedTrip(null);
     setArrivalMessage(null);
     setBusId(id);
     saveBus(id);
@@ -104,9 +124,23 @@ export function BusApp() {
             </button>
             <BusConsole
               bus={bus}
-              tracker={tracker}
-              onStart={tracker.start}
-              onStop={tracker.stop}
+              tracking={{
+                tracker,
+                wakeLock,
+                permission,
+                driverStopped,
+                unblockSteps: unblockLocationSteps(typeof navigator === "undefined" ? "" : navigator.userAgent),
+                onAskPermission: ask,
+                onStart: () => {
+                  setStoppedTrip(null);
+                  tracker.reset();
+                  tracker.start();
+                },
+                onStop: () => {
+                  tracker.stop();
+                  setStoppedTrip(trip);
+                },
+              }}
               onArrived={() => void arrive()}
               arriving={isPending(`arrive-${bus.id}`)}
               arrivalMessage={arrivalMessage}

@@ -160,6 +160,17 @@ straight line to the kiosk. The dashboard shows every bus on a Leaflet + OpenStr
 kiosk ticket shows a stop-by-stop strip ("Bus R2-01 · passed Kimihurura · 2 stops away · about 6 min").
 Stop coordinates are approximate.
 
+**Driver phone (`/bus`).** The driver picks their bus once (the phone remembers it). When HQ
+releases that bus, GPS sharing starts by itself; it stops by itself when the bus arrives at the
+end of its route (the kiosk). While tracking, the page shows **Tracking on** and keeps the screen
+awake (Screen Wake Lock API). Phones pause location for hidden pages and locked screens, so the
+page tells the driver how long tracking was lost and how to unblock location if it was refused.
+
+> **Production: a fixed GPS tracker (AVL) in each bus.** A phone page is a prototype stand-in:
+> it depends on the driver's phone, battery and an open browser tab. A real deployment would
+> fit every bus with an Automatic Vehicle Location unit (GPS + LTE, powered by the bus) that
+> reports to the same `update_bus_location` function, with no driver action at all.
+
 ### Changing the schema (Danny)
 
 Put the CLI values in a git-ignored `.env.local` at the repo root
