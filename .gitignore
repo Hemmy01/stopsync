@@ -1,0 +1,25 @@
+# Secrets: never commit
+.env
+.env.*
+!.env.example
+supabase/.env
+supabase/.temp/
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+build/
+coverage/
+*.tsbuildinfo
+next-env.d.ts
+.vercel
+
+# OS / editors
+.DS_Store
+.idea/
+.vscode/
+*.log
+
+# Firmware build output
+build/

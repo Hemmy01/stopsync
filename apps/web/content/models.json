@@ -1,0 +1,16 @@
+{
+  "voice": {
+    "status": "trained",
+    "testAccuracy": null,
+    "validationAccuracy": null,
+    "labels": ["remera", "nyabugogo", "kimironko", "downtown", "noise", "unknown"],
+    "updated": "2026-10-28"
+  },
+  "gesture": {
+    "status": "rule",
+    "testAccuracy": null,
+    "validationAccuracy": null,
+    "labels": ["one_tap", "two_taps", "three_taps", "hold", "passing", "idle"],
+    "updated": null
+  }
+}

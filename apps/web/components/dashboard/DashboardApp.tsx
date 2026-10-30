@@ -1,0 +1,142 @@
+"use client";
+
+import { useMemo } from "react";
+import { Banner } from "@/components/Banner";
+import {
+  buildActivity,
+  computeTotals,
+  configValue,
+  insightRows,
+  methodBreakdown,
+  pendingByDestination,
+  summarizeDestination,
+} from "@/lib/dashboard";
+import { DESTINATIONS } from "@/lib/destinations";
+import {
+  approveDecision,
+  dismissDecision,
+  markBusArrived,
+  resetBus,
+  resetDemo,
+  runDispatch,
+  updateConfig,
+  type ActionResult,
+} from "@/lib/rpc";
+import { getSupabase } from "@/lib/supabase";
+import { useActions } from "@/lib/use-actions";
+import { useDashboardData } from "@/lib/use-dashboard-data";
+import { useNow } from "@/lib/use-now";
+import { ActivityFeed } from "./ActivityFeed";
+import { DashboardHeader } from "./DashboardHeader";
+import { DestinationCard, type CardActions } from "./DestinationCard";
+import { MethodBreakdown } from "./MethodBreakdown";
+import { ModelInsights } from "./ModelInsights";
+import { SettingsPanel } from "./SettingsPanel";
+
+function CardSkeleton() {
+  return <div className="h-[460px] animate-pulse rounded-card border border-line bg-surface" aria-hidden />;
+}
+
+export function DashboardApp() {
+  const { data, loading, error, reload } = useDashboardData();
+  const { run, isPending, errors } = useActions();
+  const now = useNow();
+
+  const act = (key: string, fn: () => Promise<ActionResult>) => {
+    void run(key, fn).then(reload);
+  };
+
+  const actions: CardActions = {
+    approve: (d) => act(`approve-${d.id}`, () => approveDecision(getSupabase(), d.id)),
+    dismiss: (d) => act(`dismiss-${d.id}`, () => dismissDecision(getSupabase(), d.id)),
+    arrive: (b) => act(`arrive-${b.id}`, () => markBusArrived(getSupabase(), b.id, "dashboard")),
+    reset: (b) => act(`reset-${b.id}`, () => resetBus(getSupabase(), b.id)),
+    isPending,
+    errorFor: (keys) => keys.map((k) => errors[k]).find(Boolean),
+  };
+
+  const derived = useMemo(() => {
+    if (!data) return null;
+    return {
+      totals: computeTotals(data.tokens, data.buses, data.dayStart),
+      methods: methodBreakdown(data.tokens, data.dayStart),
+      insights: insightRows(data.insights),
+      pending: pendingByDestination(data.decisions),
+      activity: buildActivity(
+        data.tokens.filter((t) => t.created_at >= data.dayStart),
+        data.decisions,
+        data.events,
+        data.buses,
+      ),
+      releaseLoadPct: configValue(data.config, "release_load_pct", 70),
+    };
+  }, [data]);
+
+  const capacityOf = (code: string) => data?.destinations.find((d) => d.code === code)?.bus_capacity ?? 70;
+
+  return (
+    <div className="min-h-dvh">
+      <DashboardHeader
+        totals={derived?.totals ?? null}
+        onRecompute={() => act("dispatch", () => runDispatch(getSupabase()))}
+        recomputing={isPending("dispatch")}
+        onResetDemo={() => act("reset-demo", () => resetDemo(getSupabase()))}
+        resetting={isPending("reset-demo")}
+      />
+
+      <main className="mx-auto max-w-[1440px] space-y-6 px-4 py-6 sm:px-8">
+        {error ? (
+          <Banner tone="danger" title="Can't load live data">
+            {error}
+          </Banner>
+        ) : null}
+        {errors.dispatch ? (
+          <Banner tone="danger" title="Recompute failed">
+            {errors.dispatch}
+          </Banner>
+        ) : null}
+        {errors["reset-demo"] ? (
+          <Banner tone="danger" title="Reset failed">
+            {errors["reset-demo"]}
+          </Banner>
+        ) : null}
+
+        <section aria-label="Destinations" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {DESTINATIONS.map((d) =>
+            data && derived ? (
+              <DestinationCard
+                key={d.code}
+                code={d.code}
+                name={d.name}
+                capacity={capacityOf(d.code)}
+                releaseLoadPct={derived.releaseLoadPct}
+                summary={summarizeDestination(d.code, data.tokens, capacityOf(d.code), derived.releaseLoadPct, now)}
+                buses={data.buses.filter((b) => b.destination === d.code)}
+                pending={derived.pending[d.code]}
+                actions={actions}
+              />
+            ) : loading ? (
+              <CardSkeleton key={d.code} />
+            ) : null,
+          )}
+        </section>
+
+        {data && derived ? (
+          <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_440px]">
+            <ActivityFeed items={derived.activity} />
+            <div className="space-y-6">
+              <MethodBreakdown total={derived.methods.total} shares={derived.methods.shares} />
+              <ModelInsights rows={derived.insights} />
+              <SettingsPanel
+                rows={data.config}
+                save={(key, value) => act(`config-${key}`, () => updateConfig(getSupabase(), key, value))}
+                isPending={isPending}
+                errors={errors}
+              />
+            </div>
+          </div>
+        ) : null}
+      </main>
+    </div>
+  );
+}

@@ -1,0 +1,157 @@
+@import "tailwindcss";
+
+/* Tap&Select design tokens: the only place colours, fonts and radii are defined.
+   Concept: "Kigali departure board". See CLAUDE.md section 10. */
+:root {
+  --paper: #f5f3ee;
+  --surface: #ffffff;
+  --ink: #111418;
+  --muted: #5f6672;
+  --line: #e3e0d8;
+
+  --accent: #0b7a5f;
+  --warn: #c98a00;
+  --danger: #c2413b;
+
+  --route-1: #2b6ce4;
+  --route-2: #0e9f6e;
+  --route-3: #e2611a;
+  --route-4: #7b4fd6;
+
+  --radius-card: 12px;
+  --radius-pill: 999px;
+
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --duration: 200ms;
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-warn: var(--warn);
+  --color-danger: var(--danger);
+  --color-route-1: var(--route-1);
+  --color-route-2: var(--route-2);
+  --color-route-3: var(--route-3);
+  --color-route-4: var(--route-4);
+
+  --font-display: var(--font-space-grotesk);
+  --font-sans: var(--font-manrope);
+  --font-mono: var(--font-jetbrains-mono);
+
+  --radius-card: var(--radius-card);
+  --radius-pill: var(--radius-pill);
+
+  --ease-out: var(--ease-out);
+}
+
+/* Numbers, codes and times: mono with tabular figures and a slashed zero. */
+@utility num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums slashed-zero;
+  font-feature-settings: "tnum", "zero";
+}
+
+@layer base {
+  html {
+    background: var(--paper);
+    color: var(--ink);
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background: var(--paper);
+    color: var(--ink);
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: var(--ink);
+    color: var(--paper);
+  }
+}
+
+/* Departure-board number change: the new value settles in from below. */
+@keyframes tick {
+  from {
+    opacity: 0;
+    transform: translateY(30%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Calm listening indicator. */
+@keyframes listen {
+  0%,
+  100% {
+    transform: scaleY(0.35);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+/* Countdown bar draining from full to empty. */
+@keyframes drain {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+@utility animate-tick {
+  animation: tick var(--duration) var(--ease-out);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* /about is printable: white page, no shadows or backgrounds that waste ink. */
+@media print {
+  body {
+    background: #fff;
+  }
+  @page {
+    margin: 16mm;
+  }
+}
+
+/* /pitch: subtle slide entrance (only applied under motion-safe). */
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

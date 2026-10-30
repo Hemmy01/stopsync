@@ -1,0 +1,514 @@
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
+
+export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.18"
+  }
+  public: {
+    Tables: {
+      bus_events: {
+        Row: {
+          boarded_count: number | null
+          bus_id: string
+          created_at: string
+          event: string
+          id: number
+          source: string
+          stop_id: string | null
+        }
+        Insert: {
+          boarded_count?: number | null
+          bus_id: string
+          created_at?: string
+          event: string
+          id?: never
+          source: string
+          stop_id?: string | null
+        }
+        Update: {
+          boarded_count?: number | null
+          bus_id?: string
+          created_at?: string
+          event?: string
+          id?: never
+          source?: string
+          stop_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bus_events_bus_id_fkey"
+            columns: ["bus_id"]
+            isOneToOne: false
+            referencedRelation: "buses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bus_events_stop_id_fkey"
+            columns: ["stop_id"]
+            isOneToOne: false
+            referencedRelation: "stops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      buses: {
+        Row: {
+          destination: string
+          eta_minutes: number | null
+          id: string
+          lat: number | null
+          lng: number | null
+          location_updated_at: string | null
+          released_at: string | null
+          status: string
+        }
+        Insert: {
+          destination: string
+          eta_minutes?: number | null
+          id: string
+          lat?: number | null
+          lng?: number | null
+          location_updated_at?: string | null
+          released_at?: string | null
+          status?: string
+        }
+        Update: {
+          destination?: string
+          eta_minutes?: number | null
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          location_updated_at?: string | null
+          released_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "buses_destination_fkey"
+            columns: ["destination"]
+            isOneToOne: false
+            referencedRelation: "destinations"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
+      config: {
+        Row: {
+          description: string | null
+          key: string
+          value: number
+        }
+        Insert: {
+          description?: string | null
+          key: string
+          value: number
+        }
+        Update: {
+          description?: string | null
+          key?: string
+          value?: number
+        }
+        Relationships: []
+      }
+      destinations: {
+        Row: {
+          bus_capacity: number
+          code: string
+          gesture_hint: string | null
+          gesture_label: string | null
+          name: string
+          route: string
+          sort_order: number
+          voice_label: string | null
+        }
+        Insert: {
+          bus_capacity?: number
+          code: string
+          gesture_hint?: string | null
+          gesture_label?: string | null
+          name: string
+          route: string
+          sort_order?: number
+          voice_label?: string | null
+        }
+        Update: {
+          bus_capacity?: number
+          code?: string
+          gesture_hint?: string | null
+          gesture_label?: string | null
+          name?: string
+          route?: string
+          sort_order?: number
+          voice_label?: string | null
+        }
+        Relationships: []
+      }
+      dispatch_decisions: {
+        Row: {
+          action: string
+          created_at: string
+          decided_at: string | null
+          destination: string
+          id: number
+          load_pct: number
+          oldest_wait_min: number | null
+          reason: string
+          status: string
+          waiting: number
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          decided_at?: string | null
+          destination: string
+          id?: never
+          load_pct: number
+          oldest_wait_min?: number | null
+          reason: string
+          status?: string
+          waiting: number
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          decided_at?: string | null
+          destination?: string
+          id?: never
+          load_pct?: number
+          oldest_wait_min?: number | null
+          reason?: string
+          status?: string
+          waiting?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dispatch_decisions_destination_fkey"
+            columns: ["destination"]
+            isOneToOne: false
+            referencedRelation: "destinations"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
+      queue_tokens: {
+        Row: {
+          boarded_at: string | null
+          card_id: string | null
+          code: string
+          confidence: number | null
+          created_at: string
+          destination: string
+          id: number
+          method: string
+          status: string
+          stop_id: string
+        }
+        Insert: {
+          boarded_at?: string | null
+          card_id?: string | null
+          code: string
+          confidence?: number | null
+          created_at?: string
+          destination: string
+          id?: never
+          method: string
+          status?: string
+          stop_id: string
+        }
+        Update: {
+          boarded_at?: string | null
+          card_id?: string | null
+          code?: string
+          confidence?: number | null
+          created_at?: string
+          destination?: string
+          id?: never
+          method?: string
+          status?: string
+          stop_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "queue_tokens_destination_fkey"
+            columns: ["destination"]
+            isOneToOne: false
+            referencedRelation: "destinations"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "queue_tokens_stop_id_fkey"
+            columns: ["stop_id"]
+            isOneToOne: false
+            referencedRelation: "stops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      selection_events: {
+        Row: {
+          confidence: number | null
+          created_at: string
+          destination: string
+          id: number
+          method: string
+          outcome: string
+          stop_id: string
+          token_code: string | null
+        }
+        Insert: {
+          confidence?: number | null
+          created_at?: string
+          destination: string
+          id?: never
+          method: string
+          outcome: string
+          stop_id: string
+          token_code?: string | null
+        }
+        Update: {
+          confidence?: number | null
+          created_at?: string
+          destination?: string
+          id?: never
+          method?: string
+          outcome?: string
+          stop_id?: string
+          token_code?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "selection_events_destination_fkey"
+            columns: ["destination"]
+            isOneToOne: false
+            referencedRelation: "destinations"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "selection_events_stop_id_fkey"
+            columns: ["stop_id"]
+            isOneToOne: false
+            referencedRelation: "stops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stops: {
+        Row: {
+          id: string
+          lat: number | null
+          lng: number | null
+          name: string
+        }
+        Insert: {
+          id: string
+          lat?: number | null
+          lng?: number | null
+          name: string
+        }
+        Update: {
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          name?: string
+        }
+        Relationships: []
+      }
+    }
+    Views: {
+      model_insights_today: {
+        Row: {
+          avg_confidence: number | null
+          cancelled_or_timeout: number | null
+          changed: number | null
+          confirmation_rate: number | null
+          confirmed: number | null
+          method: string | null
+          selections: number | null
+        }
+        Relationships: []
+      }
+    }
+    Functions: {
+      approve_decision: { Args: { p_decision: number }; Returns: Json }
+      config_value: {
+        Args: { p_default: number; p_key: string }
+        Returns: number
+      }
+      create_token: {
+        Args: {
+          p_card: string
+          p_conf?: number
+          p_dest: string
+          p_method: string
+          p_stop: string
+        }
+        Returns: Json
+      }
+      dismiss_decision: { Args: { p_decision: number }; Returns: Json }
+      haversine_m: {
+        Args: { p_lat1: number; p_lat2: number; p_lng1: number; p_lng2: number }
+        Returns: number
+      }
+      kiosk_stop_id: { Args: never; Returns: string }
+      log_selection: {
+        Args: {
+          p_conf: number
+          p_dest: string
+          p_method: string
+          p_outcome: string
+          p_stop: string
+          p_token?: string
+        }
+        Returns: Json
+      }
+      mark_bus_arrived: {
+        Args: { p_bus: string; p_source?: string }
+        Returns: Json
+      }
+      reset_bus: { Args: { p_bus: string }; Returns: Json }
+      reset_demo: { Args: never; Returns: Json }
+      run_dispatch: { Args: never; Returns: undefined }
+      update_bus_location: {
+        Args: { p_bus: string; p_lat: number; p_lng: number }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
+}
+
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never) = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never) = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {},
+  },
+} as const

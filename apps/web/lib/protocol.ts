@@ -1,0 +1,182 @@
+// Board <-> kiosk serial protocol. Pure: no I/O. See docs/protocol.md.
+//
+// One message per line, "\n" terminated, comma-separated, uppercase type.
+
+import { isDestinationCode, type DestinationCode } from "./destinations";
+
+export const BAUD_RATE = 115_200;
+export const ARDUINO_USB_VENDOR_ID = 0x2341;
+
+export type BoardMethod = "voice" | "gesture";
+
+export type BoardMessage =
+  | { type: "HELLO"; stopId: string }
+  | { type: "STATE"; state: "LISTENING" | "IDLE" }
+  | { type: "SELECT"; code: DestinationCode; method: BoardMethod; confidence: number }
+  /** Diagnostics only: shown in the debug drawer, never acted on. */
+  | { type: "LOG"; text: string };
+
+export type KioskCommand = { type: "START" } | { type: "ACK"; code: string } | { type: "CANCEL" };
+
+export type ParseResult =
+  | { ok: true; message: BoardMessage }
+  | { ok: false; reason: string };
+
+const fail = (reason: string): ParseResult => ({ ok: false, reason });
+
+/** Parse one line from the board. Never throws. */
+export function parseBoardLine(raw: string): ParseResult {
+  const line = raw.trim();
+  if (line === "") return fail("Empty line");
+
+  // LOG text is free-form and may itself contain commas.
+  if (line === "LOG" || line.startsWith("LOG,")) {
+    return { ok: true, message: { type: "LOG", text: line.slice(4).trim() } };
+  }
+
+  const [type, ...args] = line.split(",").map((part) => part.trim());
+
+  switch (type) {
+    case "HELLO": {
+      if (args.length !== 1 || args[0] === "") return fail("HELLO needs a stop id");
+      return { ok: true, message: { type: "HELLO", stopId: args[0] } };
+    }
+
+    case "STATE": {
+      const state = args[0];
+      if (args.length !== 1 || (state !== "LISTENING" && state !== "IDLE")) {
+        return fail("STATE must be LISTENING or IDLE");
+      }
+      return { ok: true, message: { type: "STATE", state } };
+    }
+
+    case "SELECT": {
+      if (args.length !== 3) return fail("SELECT needs code, method and confidence");
+      const [code, rawMethod, rawConfidence] = args;
+      if (!isDestinationCode(code)) return fail(`Unknown destination code "${code}"`);
+
+      const method = rawMethod.toLowerCase();
+      if (method !== "voice" && method !== "gesture") {
+        return fail(`Method must be voice or gesture, got "${rawMethod}"`);
+      }
+
+      const confidence = Number(rawConfidence);
+      if (rawConfidence === "" || !Number.isFinite(confidence) || confidence < 0 || confidence > 1) {
+        return fail(`Confidence must be a number from 0 to 1, got "${rawConfidence}"`);
+      }
+
+      return { ok: true, message: { type: "SELECT", code, method, confidence } };
+    }
+
+    default:
+      return fail(`Unknown message type "${type}"`);
+  }
+}
+
+export interface LabelScore {
+  label: string;
+  value: number;
+}
+
+/**
+ * Scores from a "LOG,scores,<label>=<value>,..." line (firmware built with
+ * DEBUG_SCORES). Takes the LOG text; null if it isn't a well-formed scores line.
+ */
+export function parseScores(logText: string): LabelScore[] | null {
+  const [kind, ...pairs] = logText.split(",").map((part) => part.trim());
+  if (kind !== "scores" || pairs.length === 0) return null;
+
+  const scores: LabelScore[] = [];
+  for (const pair of pairs) {
+    const [label, raw, ...extra] = pair.split("=").map((part) => part.trim());
+    const value = Number(raw);
+    if (!label || !raw || extra.length > 0 || !Number.isFinite(value)) return null;
+    scores.push({ label, value });
+  }
+  return scores;
+}
+
+/** "a=1,b=2" → { a: "1", b: "2" }; null if any part isn't key=value. */
+function parseFields(text: string): Record<string, string> | null {
+  const fields: Record<string, string> = {};
+  for (const part of text.split(",")) {
+    const eq = part.indexOf("=");
+    if (eq <= 0) return null;
+    fields[part.slice(0, eq).trim()] = part.slice(eq + 1).trim();
+  }
+  return fields;
+}
+
+const GESTURE_MODES = ["swipe", "rule", "model", "off"] as const;
+export type BoardGestureMode = (typeof GESTURE_MODES)[number];
+
+export interface BoardModes {
+  voice: string;
+  gesture: BoardGestureMode;
+  fw: string | null;
+}
+
+/**
+ * The board's build from its connect line "LOG,voice=model,gesture=swipe,fw=0.3.0".
+ * Takes the LOG text; null for any other LOG line.
+ */
+export function parseBoardModes(logText: string): BoardModes | null {
+  if (!logText.startsWith("voice=")) return null;
+  const fields = parseFields(logText);
+  const gesture = fields?.gesture;
+  if (!fields?.voice || !gesture || !(GESTURE_MODES as readonly string[]).includes(gesture)) return null;
+  return { voice: fields.voice, gesture: gesture as BoardGestureMode, fw: fields.fw ?? null };
+}
+
+export interface GestureLogEvent {
+  /** e.g. "swipe_left", "tap", "two_taps", "hold", "ignored". */
+  event: string;
+  /** Extra key=value details, e.g. { ms: "180", count: "2" } for a tap. */
+  details: Record<string, string>;
+}
+
+/**
+ * A live gesture event from "LOG,gesture=<event>[,key=value…]" (firmware 0.3+).
+ * Takes the LOG text; null for other LOG lines, including sensor errors
+ * such as "gesture=APDS9960 not found".
+ */
+export function parseGestureLog(logText: string): GestureLogEvent | null {
+  const match = /^gesture=([a-z_]+)(?:,(.*))?$/.exec(logText);
+  if (!match) return null;
+  const details = match[2] === undefined ? {} : parseFields(match[2]);
+  if (details === null) return null;
+  return { event: match[1], details };
+}
+
+/** Serialise a kiosk command (without the trailing newline). */
+export function formatCommand(command: KioskCommand): string {
+  switch (command.type) {
+    case "START":
+      return "START";
+    case "CANCEL":
+      return "CANCEL";
+    case "ACK":
+      return `ACK,${command.code}`;
+  }
+}
+
+/**
+ * Splits a stream of text chunks into complete lines. Serial reads arrive in
+ * arbitrary pieces, so partial lines are held until their "\n" arrives.
+ */
+export function createLineBuffer(maxLength = 512) {
+  let pending = "";
+  return {
+    push(chunk: string): string[] {
+      pending += chunk;
+      const parts = pending.split(/\r?\n/);
+      pending = parts.pop() ?? "";
+      // A board that never sends "\n" must not grow memory forever.
+      if (pending.length > maxLength) pending = "";
+      return parts.filter((line) => line.trim() !== "");
+    },
+    reset() {
+      pending = "";
+    },
+  };
+}
