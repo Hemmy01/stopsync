@@ -184,14 +184,14 @@ export const BENEFITS: readonly { who: string; text: ReactNode }[] = [
     who: "Passengers",
     text: (
       <>
-        A fair place in line, a live ETA, no smartphone needed. They can choose by voice or a simple tap, so it
-        works for people who can&rsquo;t read the screen.
+        A fair place in line and a live ETA, with no smartphone needed. They choose their stop hands-free, by
+        voice or a swipe in the air, and hear their ticket number read out loud.
       </>
     ),
   },
   {
     who: "Operators",
-    text: <>Fuller buses, fewer empty off-peak trips, less fuel wasted.</>,
+    text: <>The aim: fuller buses, fewer empty off-peak trips, less fuel wasted.</>,
   },
   {
     who: "City and RURA",
@@ -243,14 +243,14 @@ export function RealityBadge({ reality, className = "" }: { reality: Reality; cl
 export const STRONGEST_FEATURES: readonly RankedFeature[] = [
   {
     feature: "Live demand → dispatch loop",
-    how: "Tickets reach HQ in about 1 s; rules recommend a release; a person approves",
+    how: "Tickets reach HQ within seconds; rules recommend a release; a person approves",
     benefit: "Buses leave for a reason; HQ stays in control",
     reality: "Real",
   },
   {
     feature: "Fair first-come queue",
     how: "Numbered tickets, one per card; the oldest board first, up to free seats",
-    benefit: "No pushing and no holding places",
+    benefit: "Boarding follows ticket order, and places can’t be held",
     reality: "Real",
   },
   {
@@ -262,13 +262,13 @@ export const STRONGEST_FEATURES: readonly RankedFeature[] = [
   {
     feature: "Swipe to choose a stop",
     how: "Sensor direction engine, no ML; 85–95% per direction in 20-try tests",
-    benefit: "No touchscreen: hygienic and quick",
+    benefit: "Choose a stop without touching the screen",
     reality: "Real, rule-based",
   },
   {
     feature: "On-device voice keywords",
     how: "Edge Impulse model on the Arduino; accuracy not yet measured",
-    benefit: "Works offline and keeps voices private",
+    benefit: "Recognition needs no internet; audio stays on the board",
     reality: "Real",
   },
   {
@@ -279,8 +279,8 @@ export const STRONGEST_FEATURES: readonly RankedFeature[] = [
   },
   {
     feature: "Access for everyone",
-    how: "English + Kinyarwanda (draft), spoken numbers, tap fallback, /live",
-    benefit: "Works without reading or a smartphone",
+    how: "English + Kinyarwanda (draft), spoken numbers, tap-a-stop fallback, /live",
+    benefit: "Less reading needed, and no smartphone",
     reality: "Real",
   },
   {
@@ -324,6 +324,7 @@ export const REALITY: readonly { kind: Reality; items: readonly string[] }[] = [
     kind: "Not built",
     items: [
       "Real RFID / Tap&Go reader and payment",
+      "Hands-free confirm and cancel (on-screen taps today)",
       "A trained tap-gesture model",
       "Voice accuracy on new voices and Kinyarwanda accents",
       "Weatherproof LTE + solar kiosk, and a field pilot",
@@ -333,7 +334,7 @@ export const REALITY: readonly { kind: Reality; items: readonly string[] }[] = [
 
 /** Most important first: each fixes a weakness named in REALITY. */
 export const IMPROVEMENTS: readonly { what: string; why: string }[] = [
-  { what: "Grow the voice model", why: "Test on unseen voices; add speakers and Kinyarwanda accents" },
+  { what: "Grow the voice model", why: "Test on unseen voices; add accents, and “yes / no” for hands-free confirm" },
   { what: "One-week pilot at a real stop", why: "Real waits and noise, to tune the 70% / 15 min rules" },
   { what: "Real card reader", why: "RC522 first, then Tap&Go integration instead of demo cards" },
   { what: "Exact seat counts", why: "Validator taps or door counters instead of ticket counts" },
@@ -345,7 +346,7 @@ export const FLOW_STEPS = [
   { n: 1, title: "Tap card", detail: "Tap&Go; simulated reader in the prototype" },
   { n: 2, title: "Say the stop or swipe", detail: "Voice or a swipe over the sensor" },
   { n: 3, title: "Arduino recognises it", detail: "On-device, no internet" },
-  { n: 4, title: "Confirm, get a number", detail: "Fair queue ticket, e.g. R3-014" },
+  { n: 4, title: "Confirm, get a number", detail: "Tap Confirm on screen; ticket e.g. R3-014" },
   { n: 5, title: "HQ releases the bus", detail: "Kiosk shows the live ETA" },
 ] as const;
 

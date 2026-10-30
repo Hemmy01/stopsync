@@ -84,7 +84,7 @@ export const SLIDES: readonly Slide[] = [
     speaker: "Samira",
     notes: [
       "Samira: slides 1–3 (hook and problem). Kevin: 4 (justification). Kenny: 5–6 (solution, benefits).",
-      "Emmanuel: 7–10 (tech, ML, live demo). Hassan: 11–14 (roadmap, conclusion, references, questions).",
+      "Emmanuel: 7–11 (tech, features, ML, real vs simulated, live demo). Hassan: 12–15 (roadmap, conclusion, references, questions).",
       "About 7 minutes plus the demo.",
     ],
     body: (
@@ -222,8 +222,8 @@ export const SLIDES: readonly Slide[] = [
     section: "Solution",
     speaker: "Kenny",
     notes: [
-      "Passengers: fairness and certainty, and it works without a smartphone or reading.",
-      "Operators: fuller buses and less fuel wasted on empty trips.",
+      "Passengers: fairness and certainty, no smartphone needed. Choosing the stop is hands-free; confirming is one big button on screen.",
+      "Operators: the aim is fuller buses and less fuel wasted on empty trips. We haven't measured that yet; a pilot would.",
       "City and RURA: data to reach the 50% public-transport goal.",
     ],
     body: (
@@ -288,6 +288,7 @@ export const SLIDES: readonly Slide[] = [
       "Ranked by how complete and how valuable each feature is. The top three work end to end today.",
       "Each row says honestly whether it is real, rule-based or estimated.",
       "Swipes are not machine learning: the sensor detects direction itself. We measured 85–95% per direction, 20 tries each, one tester.",
+      "Hands-free means choosing the stop. Confirm and cancel are on-screen buttons; say so if asked.",
       "The voice model runs on the board, but its accuracy is not measured yet. Say that plainly.",
     ],
     body: (
